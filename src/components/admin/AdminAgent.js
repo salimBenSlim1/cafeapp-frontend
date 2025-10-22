@@ -1,7 +1,7 @@
 import React, { useState,useEffect } from "react";
 import api from "../../api/axiosInstance";
 import axios from 'axios'
-
+import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
 // Helper function to safely access nested properties
 const safeGet = (obj, path, defaultValue = null) => {
   try {
@@ -258,6 +258,12 @@ Koun mdefini, 3tini actions li njmo na3mlouhom w koun professionnel.
         borderRadius: '16px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
       }}>
+        <div className="fixed top-6 left-6 z-50 text-white">
+        <button onClick={() => window.history.back()} className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition">
+          <ArrowLeft size={20} />
+          <span className="hidden sm:inline">Retour</span>
+        </button>
+      </div>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
           <div style={{
             background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',

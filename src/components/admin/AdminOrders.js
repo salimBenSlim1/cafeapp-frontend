@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
 import {
   Box,
   Paper,
@@ -354,29 +355,66 @@ const handlePrintReceipt = (order) => {
   return (
     <>
       <Box className="orders-container" sx={{ display: printingOrder ? 'none' : 'block' }}>
-        <Paper className="header-paper" elevation={0} style={{background:"linear-gradient(135deg, #1e293b 0%, #334155 100%)"}}>
-          <Box className="header-content">
-            <Box>
-              <Typography variant="h4" className="header-title">
-                Orders Management
-              </Typography>
-              <Typography variant="subtitle1" className="header-subtitle">
-                Manage your café orders efficiently
-              </Typography>
-            </Box>
-            <Badge 
-              badgeContent={notificationCount} 
-              color="error"
-              className="notification-badge"
-              max={99}
-            >
-              <IconButton className="notification-icon">
-                <NotificationsIcon sx={{ fontSize: 32, color: '#f1f5f9' }} />
-              </IconButton>
-            </Badge>
-          </Box>
-        </Paper>
-        
+       <Paper 
+  className="header-paper" 
+  elevation={0} 
+  style={{
+    background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+    position: "relative",
+    paddingTop: "60px"
+  }}
+>
+  <Button
+    onClick={() => window.history.back()}
+    startIcon={<ArrowLeft size={20} />}
+    sx={{
+      position: "absolute",
+      top: 16,
+      left: 16,
+      backdropFilter: "blur(10px)",
+      backgroundColor: "rgba(255, 255, 255, 0.1)",
+      color: "white",
+      borderRadius: "50px",
+      px: 2,
+      py: 1,
+      textTransform: "none",
+      transition: "transform 0.2s",
+      zIndex: 10,
+      "&:hover": {
+        backgroundColor: "rgba(255, 255, 255, 0.15)",
+        transform: "scale(1.05)",
+      },
+      "& .MuiButton-startIcon": {
+        marginRight: { xs: 0, sm: 1 },
+      },
+    }}
+  >
+    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+      Retour
+    </Box>
+  </Button>
+
+  <Box className="header-content">
+    <Box>
+      <Typography variant="h4" className="header-title">
+        Orders Management
+      </Typography>
+      <Typography variant="subtitle1" className="header-subtitle">
+        Manage your café orders efficiently
+      </Typography>
+    </Box>
+    <Badge 
+      badgeContent={notificationCount} 
+      color="error"
+      className="notification-badge"
+      max={99}
+    >
+      <IconButton className="notification-icon">
+        <NotificationsIcon sx={{ fontSize: 32, color: '#f1f5f9' }} />
+      </IconButton>
+    </Badge>
+  </Box>
+</Paper>
        {alerts.map((e, i) => (
   <div 
     key={i}

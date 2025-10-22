@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
 import {
   Box,
   Paper,
@@ -247,14 +248,52 @@ function AdminItems() {
 
   return (
     <Box className="products-container">
-      <Paper className="products-header" style={{background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)"}} elevation={0}>
-        <Typography variant="h4" className="products-title">
-          Products Management
-        </Typography>
-        <Typography variant="subtitle1" className="products-subtitle">
-          Manage your café menu items
-        </Typography>
-      </Paper>
+  <Paper 
+  className="products-header" 
+  style={{
+    background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+    paddingTop: "60px", // Add space for the button
+    position: "relative"
+  }} 
+  elevation={0}
+>
+  <Button
+    onClick={() => window.history.back()}
+    startIcon={<ArrowLeft size={20} />}
+    sx={{
+      position: "absolute",
+      top: 16,
+      left: 16,
+      backdropFilter: "blur(10px)",
+      backgroundColor: "rgba(255, 255, 255, 0.1)",
+      color: "white",
+      borderRadius: "50px",
+      px: 2,
+      py: 1,
+      textTransform: "none",
+      transition: "transform 0.2s",
+      zIndex: 10,
+      "&:hover": {
+        backgroundColor: "rgba(255, 255, 255, 0.15)",
+        transform: "scale(1.05)",
+      },
+      "& .MuiButton-startIcon": {
+        marginRight: { xs: 0, sm: 1 },
+      },
+    }}
+  >
+    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+      Retour
+    </Box>
+  </Button>
+
+  <Typography variant="h4" className="products-title">
+    Products Management
+  </Typography>
+  <Typography variant="subtitle1" className="products-subtitle">
+    Manage your café menu items
+  </Typography>
+</Paper>
 
       {showSuccess && <SuccessMessage setShowSuccess={setShowSuccess} />}
 

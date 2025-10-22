@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import api from "../../api/axiosInstance";
-
+import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
 export default function AdminCharts() {
   const [salesData, setSalesData] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
@@ -71,6 +71,12 @@ export default function AdminCharts() {
         borderRadius: '16px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
       }}>
+        <div className="fixed top-6 left-6 z-50 text-white">
+        <button onClick={() => window.history.back()} className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition">
+          <ArrowLeft size={20} />
+          <span className="hidden sm:inline ">Retour</span>
+        </button>
+      </div>
         <h1 style={{
           color: '#f1f5f9',
           fontSize: '2.5rem',
