@@ -24,23 +24,19 @@ function UserOrderPage() {
   // Session initialization - only runs once when QR code is scanned
   useEffect(() => {
     const initializeSession = async () => {
-      // Check if session already exists
-      const existingToken = sessionStorage.getItem('t');
-      const existingCafeId = sessionStorage.getItem('c');
-      const sessionKey = sessionStorage.getItem('sessionKey');
-
-      // If session exists and matches current QR key, skip initialization
-      if (existingToken && existingCafeId && sessionKey === qrKey) {
-        setSessionActive(true);
-        loadProducts(existingCafeId);
-        return;
-      }
-
-      // Only initialize if we have a QR key
-      if (!qrKey) {
-        setLoading(false);
-        return;
-      }
+     
+      // const existingToken = sessionStorage.getItem('t');
+      // const existingCafeId = sessionStorage.getItem('c');
+      // const sessionKey = sessionStorage.getItem('sessionKey');
+      // if (existingToken && existingCafeId && sessionKey === qrKey) {
+      //   setSessionActive(true);
+      //   loadProducts(existingCafeId);
+      //   return;
+      // }
+      // if (!qrKey) {
+      //   setLoading(false);
+      //   return;
+      // }
 
       try {
         const response = await axios.get(`${API_BASE}/start-session`, {
