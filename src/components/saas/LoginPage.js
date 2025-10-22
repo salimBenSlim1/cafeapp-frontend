@@ -49,10 +49,9 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (!validateForm()) return;
-    axios.post(`${process.env.REACT_APP_API_URL}/login`,formData,{headers:{
-      'x-api-key':localStorage.getItem('token')
-    }})
+    axios.post(`${process.env.REACT_APP_API_URL}/login`,formData)
     .then(r=>{
+      localStorage.setItem('token',r.data.apiKey)
       setIsLoading(true);
     
     // Simulate API call
