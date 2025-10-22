@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create a reusable axios instance
 const api = axios.create({
-  baseURL: 'http://localhost:5000/api', // your backend base URL
+  baseURL: `${process.env.REACT_APP_API_URL}/api`, // your backend base URL
 });
 
 // ✅ Add interceptor

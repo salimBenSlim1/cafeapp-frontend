@@ -60,7 +60,7 @@ function AdminOrders() {
 
   // Socket.io setup
   useEffect(() => {
-    const SOCKET_URL = 'http://localhost:5000';
+    const SOCKET_URL = process.env.REACT_APP_WS_URL;
     const newSocket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       withCredentials: true
@@ -85,7 +85,7 @@ function AdminOrders() {
   }, []);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/itemsEndSoon', {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/itemsEndSoon`, {
       headers: { 'x-api-key': localStorage.getItem('token') }
     })
     .then(r => setAlerts(r.data))

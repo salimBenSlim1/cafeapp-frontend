@@ -16,7 +16,7 @@ function UserOrderPage() {
   const [sessionActive, setSessionActive] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const API_BASE = 'http://localhost:5000';
+  const API_BASE = process.env.REACT_APP_API_URL;
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const qrKey = queryParams.get("t");

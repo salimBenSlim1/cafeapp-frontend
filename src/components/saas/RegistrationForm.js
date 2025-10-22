@@ -82,7 +82,7 @@ export default function RegistrationForm() {
     
     if (!validateForm()) return;
     
-   axios.post('http://localhost:5000/add-new-form',formData)
+   axios.post(`${process.env.REACT_APP_API_URL}/add-new-form`,formData)
     .then(r=>{
     setIsSubmitting(true);
 

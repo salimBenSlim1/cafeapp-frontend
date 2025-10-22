@@ -49,7 +49,7 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (!validateForm()) return;
-    axios.post('http://localhost:5000/login',formData,{headers:{
+    axios.post(`${process.env.REACT_APP_API_URL}/login`,formData,{headers:{
       'x-api-key':localStorage.getItem('token')
     }})
     .then(r=>{

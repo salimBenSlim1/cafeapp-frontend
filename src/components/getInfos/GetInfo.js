@@ -16,7 +16,7 @@ const GetInfos = () => {
     const fetchData = () => {
         setLoading(true)
         setError(null)
-        axios.get('http://localhost:5000/getForms')
+        axios.get(`${process.env.REACT_APP_API_URL}/getForms`)
             .then(r => {
                 setData(r.data)
                 setLoading(false)
@@ -33,7 +33,7 @@ const GetInfos = () => {
         setSuccessMessage(null)
         setError(null)
         
-        axios.post('http://localhost:5000/create', e)
+        axios.post(`${process.env.REACT_APP_API_URL}/create`, e)
             .then(r => {
                 console.log(r.data)
                 setSuccessMessage(`Café "${e.cafeName}" créé avec succès!`)

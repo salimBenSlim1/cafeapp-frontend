@@ -5,7 +5,7 @@ export default function QRCodesDashboard() {
   const [tables, setTables] = useState([]);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/getQRCodes', {
+    axios.get(`${process.env.REACT_APP_API_URL}/api/getQRCodes`, {
       headers: { "x-api-key": `${localStorage.getItem('token')}` }
     })
     .then(res => {setTables(res.data);console.log(res.data)})
@@ -26,7 +26,7 @@ export default function QRCodesDashboard() {
       console.log('🔄 Début du téléchargement...');
 
       const response = await axios({
-        url: `http://localhost:5000/api/downloadQRCodesPDF`,
+        url: `${process.env.REACT_APP_API_URL}/api/downloadQRCodesPDF`,
         method: 'GET',
         responseType: 'blob', // CRITIQUE: doit être 'blob'
         timeout: 30000, // 30 secondes timeout
