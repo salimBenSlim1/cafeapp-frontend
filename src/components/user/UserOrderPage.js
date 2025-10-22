@@ -149,10 +149,10 @@ function UserOrderPage() {
 
     try {
       const response = await axios.post(`${API_BASE}/addOrder`, payload, {
-        // headers: {
-        //   key: qrKey,
-        //   token: sessionStorage.getItem('t')
-        // }
+        headers: {
+          key: qrKey,
+          token: sessionStorage.getItem('t')
+        }
       });
       console.log('Order placed successfully:', response.data);
       setRefresh(!refresh);
