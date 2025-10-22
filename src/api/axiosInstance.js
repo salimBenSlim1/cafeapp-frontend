@@ -21,7 +21,7 @@ api.interceptors.response.use(
     // Optional: handle unauthorized API key
     if (error.response?.status === 401 || error.response?.status === 403) {
       localStorage.removeItem('token');
-      window.location.href = 'http://localhost:3000/login';
+      window.location.href = 'https://cafeapp-frontend-lij4.vercel.app/login';
     }
 
     return Promise.reject(error);
