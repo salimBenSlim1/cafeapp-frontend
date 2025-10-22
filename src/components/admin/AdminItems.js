@@ -1,0 +1,494 @@
+import { useState, useEffect } from 'react';
+import {
+  Box,
+  Paper,
+  Grid,
+  Card,
+  CardMedia,
+  CardContent,
+  Typography,
+  IconButton,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Chip,
+  InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Fab,
+  ImageList,
+  ImageListItem,
+  ImageListItemBar,
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Add as AddIcon,
+  Search as SearchIcon,
+  LocalCafe as CoffeeIcon,
+  Fastfood as FoodIcon,
+  LocalBar as DrinkIcon,
+  Cake as DessertIcon,
+  CheckCircle as CheckCircleIcon,
+} from '@mui/icons-material';
+import SmokingRoomsIcon from '@mui/icons-material/SmokingRooms';
+import CasinoIcon from '@mui/icons-material/Casino';
+import SuccessMessage from './SuccessAlert';
+import './AdminItems.css';
+import api from '../../api/axiosInstance';
+
+// Dummy images data - Replace with your actual images
+const categoryImages = {
+  coffee: [
+    '/images/cafecreme.jpg',
+    '/images/cappucin.jpg',
+    '/images/express.jpg',
+    
+  ],
+  food: [
+    '/images/pathé.jpg',
+    '/images/painauchocolat.jpg',
+    
+  ],
+  drink: [
+    '/images/orangejuice.jpg',
+    
+  ],
+  // dessert: [
+  //   '/images/dessert1.jpg',
+  //   '/images/dessert2.jpg',
+  //   '/images/dessert3.jpg',
+  //   '/images/dessert4.jpg',
+  // ],
+  games: [
+    '/images/belote.jpg',
+    
+  ],
+  smoking: [
+    '/images/chicha.jpg',
+    
+  ],
+};
+
+function AdminItems() {
+  const [products, setProducts] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [openDialog, setOpenDialog] = useState(false);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [currentProduct, setCurrentProduct] = useState(null);
+  const [productToDelete, setProductToDelete] = useState(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [refresh, setRefresh] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
+  
+  const [formData, setFormData] = useState({
+    name: '',
+    price: '',
+    category: '',
+    imageUrl: '',
+    stock: "",
+  });
+
+  useEffect(() => {
+    api
+      .get('/getItems',{headers:{'x-api-key':localStorage.getItem('token')}})
+      .then((r) => {
+        setProducts(r.data);
+        setFilteredProducts(r.data);
+      })
+      .catch((err) => console.log(err));
+  }, [refresh]);
+
+  useEffect(() => {
+    let filtered = products;
+
+    if (searchTerm) {
+      filtered = filtered.filter((product) =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter((product) => product.category === categoryFilter);
+    }
+
+    setFilteredProducts(filtered);
+  }, [searchTerm, categoryFilter, products]);
+
+  const handleOpenDialog = (product = null) => {
+    if (product) {
+      setCurrentProduct(product);
+      setFormData({
+        name: product.name,
+        price: product.price,
+        category: product.category,
+        imageUrl: product.imageUrl || '',
+        stock: product.stock,
+      });
+      setSelectedImage(product.imageUrl || '');
+    } else {
+      setCurrentProduct(null);
+      setFormData({
+        name: '',
+        price: '',
+        category: '',
+        imageUrl: '',
+        stock: "",
+      });
+      setSelectedImage('');
+    }
+    setOpenDialog(true);
+  };
+
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setCurrentProduct(null);
+    setSelectedImage('');
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Reset selected image when category changes
+    if (name === 'category') {
+      setSelectedImage('');
+      setFormData({ ...formData, [name]: value, imageUrl: '' });
+    }
+  };
+
+  
+
+  const handleImageSelect = (imageUrl) => {
+    setSelectedImage(imageUrl);
+    setFormData({ ...formData, imageUrl: imageUrl });
+  };
+
+  const handleSubmit = () => {
+    if (currentProduct) {
+      api
+        .put(`/updateItem/${currentProduct.id}`, formData,{
+          headers:{'x-api-key':localStorage.getItem('token')}
+        })
+        .then((r) => {
+          setShowSuccess(true);
+          setRefresh(!refresh);
+          handleCloseDialog();
+        })
+        .catch((err) => console.log(err));
+    } else {
+      api
+        .post('/addItem', formData,{
+          headers:{'x-api-key':localStorage.getItem('token')}
+        })
+        .then((r) => {
+          setShowSuccess(true);
+          setRefresh(!refresh);
+          handleCloseDialog();
+        })
+        .catch((err) => console.log(err));
+    }
+  };
+
+  const handleDeleteClick = (product) => {
+    setProductToDelete(product);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = () => {
+    api
+      .delete(`/deleteItem/${productToDelete.id}`,{
+          headers:{'x-api-key':localStorage.getItem('token')}
+        })
+      .then((r) => {
+        setShowSuccess(true);
+        setRefresh(!refresh);
+        setOpenDeleteDialog(false);
+        setProductToDelete(null);
+      })
+      .catch((err) => console.log(err));
+  };
+
+  const handleCancelDelete = () => {
+    setOpenDeleteDialog(false);
+    setProductToDelete(null);
+  };
+
+  const getCategoryIcon = (category) => {
+    switch (category?.toLowerCase()) {
+      case 'coffee':
+        return <CoffeeIcon />;
+      case 'food':
+        return <FoodIcon />;
+      case 'drink':
+        return <DrinkIcon />;
+      case 'dessert':
+        return <DessertIcon />;
+      case 'games':
+        return <CasinoIcon />;
+      case 'smoking':
+        return <SmokingRoomsIcon />;
+      default:
+        return <CoffeeIcon />;
+    }
+  };
+
+  const categories = ['all', 'coffee', 'food', 'drink', 'dessert', 'games', 'smoking'];
+
+  // Get available images for selected category
+  const availableImages = formData.category ? categoryImages[formData.category] || [] : [];
+
+  return (
+    <Box className="products-container">
+      <Paper className="products-header" style={{background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)"}} elevation={0}>
+        <Typography variant="h4" className="products-title">
+          Products Management
+        </Typography>
+        <Typography variant="subtitle1" className="products-subtitle">
+          Manage your café menu items
+        </Typography>
+      </Paper>
+
+      {showSuccess && <SuccessMessage setShowSuccess={setShowSuccess} />}
+
+      <Paper className="filters-paper" elevation={0}>
+        <Box className="filters-container">
+          <TextField
+            placeholder="Search products..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="search-field"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControl className="category-select">
+            <InputLabel>Category</InputLabel>
+            <Select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              label="Category"
+            >
+              {categories.map((cat) => (
+                <MenuItem key={cat} value={cat}>
+                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+      </Paper>
+
+      <Grid container spacing={3} className="products-grid">
+        {filteredProducts.length === 0 ? (
+          <Grid item xs={12}>
+            <Paper className="empty-state">
+              <Typography variant="h6">No products found</Typography>
+              <Typography variant="body2">
+                Try adjusting your filters or add a new product
+              </Typography>
+            </Paper>
+          </Grid>
+        ) : (
+          filteredProducts.map((product) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
+              <Card className={`product-card ${!product.stock ? 'out-of-stock' : ''}`}>
+                <Box className="product-image-container">
+                  <CardMedia
+                    component="img"
+                    height="220"
+                    image={product.imageUrl || 'https://via.placeholder.com/300x220?text=No+Image'}
+                    alt={product.name}
+                    className="product-image"
+                  />
+                  {!product.stock && (
+                    <Chip label="Out of Stock" className="stock-chip" />
+                  )}
+                  <Box className="product-actions">
+                    <IconButton
+                      className="action-btn edit-btn"
+                      onClick={() => handleOpenDialog(product)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      className="action-btn delete-btn"
+                      onClick={() => handleDeleteClick(product)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                </Box>
+                <CardContent className="product-content">
+                  <Box className="product-header">
+                    <Typography variant="h6" className="product-name">
+                      {product.name}
+                    </Typography>
+                    <Chip
+                      icon={getCategoryIcon(product.category)}
+                      label={product.category}
+                      size="small"
+                      className="category-chip"
+                    />
+                  </Box>
+                  <Typography variant="h6" className="product-price">
+                    {product.price.toFixed(2)} TnD
+                  </Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))
+        )}
+      </Grid>
+
+      <Fab className="add-fab" color="primary" onClick={() => handleOpenDialog()}>
+        <AddIcon />
+      </Fab>
+
+      {/* Add/Edit Product Dialog */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+        <DialogTitle className="dialog-title">
+          {currentProduct ? 'Edit Product' : 'Add New Product'}
+        </DialogTitle>
+        <DialogContent className="dialog-content">
+          <Box className="form-container">
+            <TextField
+              label="Product Name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              fullWidth
+              required
+              className="form-field"
+            />
+            <TextField
+              label="Price (TnD)"
+              name="price"
+              type="number"
+              value={formData.price}
+              onChange={handleInputChange}
+              fullWidth
+              required
+              className="form-field"
+              inputProps={{ step: '0.01', min: '0' }}
+            />
+            <FormControl fullWidth className="form-field">
+              <InputLabel>Category</InputLabel>
+              <Select
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                label="Category"
+                required
+              >
+                {categories.filter(cat => cat !== 'all').map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Image Picker Section */}
+            {formData.category && (
+              <Box className="image-picker-section">
+                <Typography variant="subtitle1" className="image-picker-title">
+                  Select Product Image
+                </Typography>
+                <ImageList cols={3} gap={12} className="image-picker-grid">
+                  {availableImages.map((imageUrl, index) => (
+                    <ImageListItem 
+                      key={index} 
+                      
+                      className={`image-picker-item ${selectedImage === imageUrl ? 'selected' : ''}`}
+                      onClick={() => handleImageSelect(imageUrl)}
+                    >
+                      <img
+                        src={imageUrl}
+                        alt={`${formData.category} ${index + 1}`}
+                        loading="lazy"
+                        style={{ cursor: 'pointer', borderRadius: '8px' }}
+                      />
+                      {selectedImage === imageUrl && (
+                        <ImageListItemBar
+                          className="image-selected-overlay"
+                          actionIcon={
+                            <CheckCircleIcon className="check-icon" />
+                          }
+                        />
+                      )}
+                    </ImageListItem>
+                  ))}
+                </ImageList>
+              </Box>
+            )}
+
+             <TextField
+              label="stock"
+              name="stock"
+              type="number"
+              value={formData.stock}
+              onChange={handleInputChange}
+              fullWidth
+              required
+              className="form-field"
+              inputProps={{ step: '0.01', min: '0' }}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions className="dialog-actions">
+          <Button onClick={handleCloseDialog} className="cancel-btn">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            className="submit-btn"
+            disabled={!formData.name || !formData.price || !formData.category || !formData.imageUrl}
+          >
+            {currentProduct ? 'Update' : 'Add'} Product
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteDialog} onClose={handleCancelDelete}>
+        <DialogTitle className="delete-dialog-title">Confirm Delete</DialogTitle>
+        <DialogContent className="delete-dialog-content">
+          <Typography>
+            Are you sure you want to delete{' '}
+            <strong>{productToDelete?.name}</strong>?
+          </Typography>
+          <Typography variant="body2" sx={{ mt: 1, color: '#64748b' }}>
+            This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions className="delete-dialog-actions">
+          <Button onClick={handleCancelDelete} className="cancel-delete-btn">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmDelete}
+            variant="contained"
+            className="confirm-delete-btn"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
+  );
+}
+
+export default AdminItems;

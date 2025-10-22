@@ -1,0 +1,366 @@
+/* Container Styles */
+.orders-container {
+  padding: 32px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  min-height: 100vh;
+}
+
+/* Header Styles */
+.header-paper {
+  padding: 32px;
+  margin-bottom: 32px;
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+  border-radius: 16px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+}
+
+.header-title {
+  color: #f1f5f9 !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.5px;
+  margin-bottom: 8px !important;
+}
+
+.header-subtitle {
+  color: #cbd5e1 !important;
+  font-weight: 400 !important;
+}
+
+/* Toggle Button Styles */
+.toggle-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 32px;
+}
+
+.toggle-group {
+  background: white;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+  padding: 4px;
+}
+
+.toggle-button {
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 12px 28px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+  color: #64748b !important;
+  transition: all 0.3s ease !important;
+}
+
+.toggle-button.Mui-selected {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.toggle-button:hover {
+  background: #f1f5f9 !important;
+}
+
+.toggle-button.Mui-selected:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+}
+
+/* Table Paper Styles */
+.table-paper {
+  background: white !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08) !important;
+  overflow: hidden;
+}
+
+/* Table Header Styles */
+.header-cell {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+  color: #f1f5f9 !important;
+  font-weight: 700 !important;
+  font-size: 0.875rem !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 20px 16px !important;
+  border: none !important;
+}
+
+/* Table Row Styles */
+.table-row {
+  transition: all 0.2s ease !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.table-row:hover {
+  background: #f8fafc !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.table-row:last-child {
+  border-bottom: none !important;
+}
+
+/* Table Cell Styles */
+.table-cell {
+  color: #1e293b !important;
+  padding: 20px 16px !important;
+  font-size: 0.9375rem !important;
+  border: none !important;
+}
+
+.table-number {
+  font-weight: 700 !important;
+  color: #3b82f6 !important;
+  font-size: 1.125rem !important;
+}
+
+.items-cell {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.items-cell:hover {
+  color: #3b82f6 !important;
+}
+
+.item-line {
+  padding: 4px 0;
+  line-height: 1.6;
+}
+
+.item-quantity {
+  font-weight: 700;
+  color: #3b82f6;
+  margin-right: 4px;
+}
+
+.price-cell {
+  font-weight: 700 !important;
+  color: #10b981 !important;
+  font-size: 1rem !important;
+}
+
+.status-cell {
+  cursor: pointer;
+}
+
+.time-cell {
+  color: #64748b !important;
+  font-size: 0.875rem !important;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center !important;
+  padding: 64px 16px !important;
+  color: #94a3b8 !important;
+  font-size: 1.125rem !important;
+}
+
+/* Dialog Styles */
+.dialog-title {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
+  color: #f1f5f9 !important;
+  font-weight: 700 !important;
+  padding: 24px !important;
+  font-size: 1.5rem !important;
+}
+
+.dialog-content {
+  padding: 24px !important;
+  background: #f8fafc;
+}
+
+.dialog-item {
+  background: white;
+  border-radius: 12px;
+  margin-bottom: 12px !important;
+  padding: 16px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.dialog-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.item-text .MuiListItemText-primary {
+  font-weight: 600 !important;
+  color: #1e293b !important;
+  font-size: 1rem !important;
+}
+
+.item-text .MuiListItemText-secondary {
+  color: #10b981 !important;
+  font-weight: 600 !important;
+  margin-top: 4px !important;
+}
+
+/* Edit Box Styles */
+.edit-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quantity-input input {
+  font-weight: 600;
+  text-align: center;
+}
+
+.update-button {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 8px 20px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.update-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4) !important;
+}
+
+.cancel-button {
+  color: #64748b !important;
+  border-color: #cbd5e1 !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 8px 20px !important;
+  border-radius: 8px !important;
+}
+
+.cancel-button:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+}
+
+/* Action Buttons */
+.action-button {
+  margin-left: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.edit-icon {
+  color: #3b82f6 !important;
+}
+
+.edit-icon:hover {
+  background: #dbeafe !important;
+  transform: scale(1.1);
+}
+
+.delete-icon {
+  color: #ef4444 !important;
+}
+
+.delete-icon:hover {
+  background: #fee2e2 !important;
+  transform: scale(1.1);
+}
+
+/* Dialog Actions */
+.dialog-actions {
+  padding: 16px 24px !important;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.close-button {
+  color: #64748b !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+}
+
+.close-button:hover {
+  background: #f1f5f9 !important;
+}
+
+/* Delete Confirmation Dialog */
+.delete-dialog-title {
+  color: #ef4444 !important;
+  font-weight: 700 !important;
+  padding: 24px !important;
+  background: #fef2f2;
+  border-bottom: 2px solid #fee2e2;
+}
+
+.delete-dialog-content {
+  padding: 32px 24px !important;
+}
+
+.delete-dialog-content strong {
+  color: #ef4444;
+  font-weight: 700;
+}
+
+.delete-dialog-actions {
+  padding: 16px 24px !important;
+  background: #fef2f2;
+  border-top: 1px solid #fee2e2;
+}
+
+.cancel-delete-button {
+  color: #64748b !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+}
+
+.cancel-delete-button:hover {
+  background: #f1f5f9 !important;
+}
+
+.confirm-delete-button {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
+  padding: 10px 24px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+}
+
+.confirm-delete-button:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%) !important;
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .orders-container {
+    padding: 16px;
+  }
+
+  .header-paper {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .toggle-button {
+    padding: 10px 16px !important;
+    font-size: 0.875rem !important;
+  }
+
+  .table-cell {
+    padding: 12px 8px !important;
+    font-size: 0.875rem !important;
+  }
+
+  .header-cell {
+    padding: 16px 8px !important;
+    font-size: 0.8125rem !important;
+  }
+@media (max-width: 768px) {
+  .item-line {
+    font-size: 7px; /* smaller size for phones */
+  }
+}
+
+}
