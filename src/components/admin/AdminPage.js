@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { LayoutDashboard, Package, ShoppingCart, Sparkles, QrCode, TrendingUp, Lock, CreditCard, Check, Star, AlertCircle, Loader2 } from 'lucide-react';
 
 export default function ProtectedAdminDashboard() {
-  const [isPaid, setIsPaid] = useState(false);
+  const [isPaid, setIsPaid] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [userPlan, setUserPlan] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
