@@ -11,7 +11,7 @@ export default function ProtectedAdminDashboard() {
 
   // Vérifier le statut de paiement au chargement
   useEffect(() => {
-    checkPaymentStatus();
+    // checkPaymentStatus();
   }, []);
 
   const checkPaymentStatus = async () => {
