@@ -8,14 +8,21 @@ export default function PaymentSuccess() {
   const [showConfetti, setShowConfetti] = useState(true);
   const location = useLocation();
 const queryParams = new URLSearchParams(location.search);
-const ref = queryParams.get("ref");
+const ref = queryParams.get("payment_ref");
   useEffect(()=>{
-    axios.get('https://api.sandbox.konnect.network/api/v2/payments/'+ref)
+    axios.post('http://localhost:5000/api/insertPaymentData/'+ref,{},{
+      headers:{'x-api-key':localStorage.getItem('token')}
+    })
+    .then(r=>{
+      axios.get('https://api.sandbox.konnect.network/api/v2/payments/'+ref)
     .then(r=>{if(r?.data?.payment?.transactions[0]?.status=='failed_payment') navigate('/cancel')
     else setShowSucc(false)
 
     })
     .catch(err=>console.log(err))
+    })
+    .catch(err=>console.log(err))
+    
 
   })
 

@@ -1,8 +1,23 @@
-import React, { useState } from 'react';
+import axios from 'axios';
+import React, { useState,useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 
 export default function PaymentFailed() {
   const [isRetrying, setIsRetrying] = useState(false);
-
+    const location = useLocation();
+const queryParams = new URLSearchParams(location.search);
+const ref = queryParams.get("payment_ref");
+console.log(ref)
+  useEffect(() => {
+     axios.post('http://localhost:5000/insertPaymentData/'+ref,{
+      cafeId:1
+     })
+    .then(r=>{
+      console.log(r)
+    })
+    .catch(err=>console.log(err))
+  }, [])
+  
   const handleTryAgain = () => {
     setIsRetrying(true);
     setTimeout(() => {

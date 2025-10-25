@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Coffee, Zap, TrendingUp, QrCode, Check, Star, ChevronRight, Menu, X, Play } from 'lucide-react';
 import RegistrationForm from './RegistrationForm';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 // Mock RegistrationForm component since the original isn't provided
 
@@ -52,7 +53,11 @@ export default function CafeAppLanding() {
 
   const handlePayment = (amount) => {
     // Payment handler - kept from original
-    console.log('Payment for:', amount);
+    axios.post('http://localhost:5000/pay',{
+      amount,
+    }).then(r=>{
+      window.location.href=r.data.payUrl
+    })
   };
 
   return (
@@ -239,66 +244,7 @@ export default function CafeAppLanding() {
       </section>
 
       {/* Pricing Section */}
-      <section ref={pricingRef} className="py-32 px-6 relative">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20 reveal">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Des tarifs <span className="gradient-text">transparents</span>
-            </h2>
-            <p className="text-xl text-gray-400">Choisissez l'offre qui vous convient</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {[
-              { 
-                name: 'Basic', 
-                price: '39000', 
-                features: ['Jusqu\'à 20 tables', 'Menu QR illimité', 'Dashboard simple', 'Support par email'],
-                color: 'from-blue-600 to-cyan-600'
-              },
-              { 
-                name: 'VIP', 
-                price: '59000', 
-                features: ['Tables illimitées', 'QR personnalisés', 'AI Insights avancés', 'Support prioritaire 24/7', 'Thèmes premium'],
-                color: 'from-blue-600 to-cyan-600',
-                popular: true
-              }
-            ].map((plan, i) => (
-              <div key={i} className={`reveal glass rounded-3xl p-8 relative ${plan.popular ? 'ring-2 ring-blue-500' : ''} hover:scale-105 transition duration-300`}>
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2 rounded-full flex items-center gap-2">
-                      <Star size={16} fill="currentColor" />
-                      <span className="font-semibold">Populaire</span>
-                    </div>
-                  </div>
-                )}
-                
-                <h3 className="text-3xl font-bold mb-2">{plan.name}</h3>
-                <div className="mb-6">
-                  <span className="text-5xl font-bold gradient-text">{plan.price}</span>
-                  <span className="text-gray-400 ml-2">TND/mois</span>
-                </div>
-                
-                <ul className="space-y-4 mb-8">
-                  {plan.features.map((feature, j) => (
-                    <li key={j} className="flex items-center gap-3">
-                      <Check className="text-green-400 flex-shrink-0" size={20} />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-
-                <button 
-                onClick={() => handlePayment(plan.price)}
-                className={`w-full bg-gradient-to-r ${plan.color} px-6 py-4 rounded-full font-semibold hover:scale-105 transition`}>
-                  Commencer maintenant
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+     
 
       {/* Registration Form Section */}
       <section className="py-32 px-6 relative" id='form'>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Plus, Minus, X, Receipt } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import axios from 'axios';
+import {io} from 'socket.io-client';
 
 function UserOrderPage() {
   const [products, setProducts] = useState([]);
@@ -15,29 +16,65 @@ function UserOrderPage() {
   const [refresh, setRefresh] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [orderLoading, setOrderLoading] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   const API_BASE = process.env.REACT_APP_API_URL;
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const qrKey = queryParams.get("t");
 
+  // Load orders from localStorage on component mount
+  useEffect(() => {
+    const storedOrders = localStorage.getItem('userOrders');
+    if (storedOrders) {
+      try {
+        setOrders(JSON.parse(storedOrders));
+      } catch (err) {
+        console.error('Failed to parse stored orders:', err);
+        localStorage.removeItem('userOrders');
+      }
+    }
+  }, []);
+
+  // Socket.IO connection for status updates
+  useEffect(() => {
+    if (!sessionActive) return;
+
+     const SOCKET_URL = process.env.REACT_APP_WS_URL;
+    const newSocket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      withCredentials: true
+    });
+    
+   
+    
+    newSocket.on('statusUpdated', (data) => {
+
+      // Trigger session expired
+      setSessionExpired(true);
+      
+      // Navigate to Google after 5 seconds
+      setTimeout(() => {
+        window.location.href = 'https://www.google.com';
+      }, 5000);
+    });
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [sessionActive, API_BASE]);
+
+  // Save orders to localStorage whenever they change
+  useEffect(() => {
+    if (orders.length > 0) {
+      localStorage.setItem('userOrders', JSON.stringify(orders));
+    }
+  }, [orders]);
+
   // Session initialization - only runs once when QR code is scanned
   useEffect(() => {
     const initializeSession = async () => {
-     
-      // const existingToken = sessionStorage.getItem('t');
-      // const existingCafeId = sessionStorage.getItem('c');
-      // const sessionKey = sessionStorage.getItem('sessionKey');
-      // if (existingToken && existingCafeId && sessionKey === qrKey) {
-      //   setSessionActive(true);
-      //   loadProducts(existingCafeId);
-      //   return;
-      // }
-      // if (!qrKey) {
-      //   setLoading(false);
-      //   return;
-      // }
-
       try {
         const response = await axios.get(`${API_BASE}/start-session`, {
           params: { key: qrKey }
@@ -130,6 +167,8 @@ function UserOrderPage() {
   const placeOrder = async () => {
     if (!cart.length) return;
 
+    setOrderLoading(true);
+
     const payload = {
       cafeId: sessionStorage.getItem('c'),
       items: cart.map(i => ({ itemId: i.id, quantity: i.quantity }))
@@ -144,7 +183,7 @@ function UserOrderPage() {
       status: 'pending'
     };
 
-    // Add to orders array
+    // Add to orders array (which will trigger localStorage save via useEffect)
     setOrders(prevOrders => [...prevOrders, newOrder]);
 
     try {
@@ -156,6 +195,8 @@ function UserOrderPage() {
       });
       console.log('Order placed successfully:', response.data);
       setRefresh(!refresh);
+      setCart([]);
+      setOpenCart(false);
     } catch (err) {
       console.error('placeOrder error:', err);
       if (err.response?.status === 401) {
@@ -166,13 +207,45 @@ function UserOrderPage() {
       }
       // Remove order if failed
       setOrders(prevOrders => prevOrders.filter(o => o.id !== newOrder.id));
+    } finally {
+      setOrderLoading(false);
     }
+  };
 
-    setCart([]);
-    setOpenCart(false);
+  const clearAllOrders = () => {
+    if (window.confirm('Are you sure you want to clear all orders?')) {
+      setOrders([]);
+      localStorage.removeItem('userOrders');
+    }
   };
 
   const categories = ['all', 'Coffee', 'Food', 'Drink', 'Dessert', 'Games', 'Smoking'];
+
+  // Session Expired Screen
+  if (sessionExpired) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+        <div className="text-center max-w-md">
+          <div className="mb-8">
+            <img src="/images/coffAI.png" alt="CoffAI Logo" className="w-48 h-48 mx-auto" />
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
+            <h1 className="text-3xl font-bold text-white mb-4">Session Expirée</h1>
+            <p className="text-blue-200 text-lg mb-6">
+              Votre session a expiré. Merci d'avoir utilisé CoffAI!
+            </p>
+            <p className="text-slate-300 text-sm mb-4">
+              Bienvenue et à bientôt! 👋
+            </p>
+            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-400 text-sm">
+              Redirection en cours...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Loading state
   if (loading) {
@@ -388,16 +461,24 @@ function UserOrderPage() {
                       <div className="mt-6 flex gap-3">
                         <button
                           onClick={() => setOpenCart(false)}
-                          className="flex-1 py-3 px-6 text-slate-300 hover:bg-slate-700 rounded-xl font-semibold transition-colors border border-slate-700"
+                          disabled={orderLoading}
+                          className="flex-1 py-3 px-6 text-slate-300 hover:bg-slate-700 rounded-xl font-semibold transition-colors border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           Continue Shopping
                         </button>
                         <button
                           onClick={placeOrder}
-                          disabled={cart.length === 0}
-                          className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                          disabled={cart.length === 0 || orderLoading}
+                          className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
                         >
-                          Place Order
+                          {orderLoading ? (
+                            <>
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                              <span>Processing...</span>
+                            </>
+                          ) : (
+                            'Place Order'
+                          )}
                         </button>
                       </div>
                     </div>
@@ -470,9 +551,29 @@ function UserOrderPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* Clear Orders Button */}
+                    <button
+                      onClick={clearAllOrders}
+                      className="w-full mt-4 py-3 px-6 bg-red-600/20 hover:bg-red-600/30 text-red-400 border border-red-500/30 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                    >
+                      <X size={20} />
+                      Clear All Orders
+                    </button>
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading Overlay for Order Placement */}
+        {orderLoading && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl text-center">
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-white text-xl font-semibold mb-2">Placing your order...</p>
+              <p className="text-slate-400 text-sm">Please wait while we process your request</p>
             </div>
           </div>
         )}
