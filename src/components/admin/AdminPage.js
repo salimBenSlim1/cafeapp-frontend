@@ -3,8 +3,8 @@ import { LayoutDashboard, Package, ShoppingCart, Sparkles, QrCode, TrendingUp, L
 
 export default function ProtectedAdminDashboard() {
   const [isPaid, setIsPaid] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userPlan, setUserPlan] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userPlan, setUserPlan] = useState("basic");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
