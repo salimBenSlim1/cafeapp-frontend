@@ -54,10 +54,13 @@ const categoryImages = {
   food: [
     '/images/pathé.jpg',
     '/images/painauchocolat.jpg',
+    '/images/gauffre.png',
     
   ],
   drink: [
     '/images/orangejuice.jpg',
+    '/images/eau0.5L.png',
+    '/images/eau1L.png',
     
   ],
   // dessert: [
