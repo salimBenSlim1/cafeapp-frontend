@@ -58,9 +58,11 @@ const categoryImages = {
     '/images/latte-caramel.png',
     '/images/latte-glacé-noisette.png',
     '/images/latte-glacé-vanille.png',
+    '/images/black.jpg',
     
   ],
   food: [
+    '/images/black.jpg',
     '/images/pathé.jpg',
     '/images/painauchocolat.jpg',
     '/images/gauffre.png',
@@ -107,6 +109,7 @@ const categoryImages = {
   ],
   drink: [
     '/images/orangejuice.jpg',
+    '/images/black.jpg',
     '/images/eau0.5L.png',
     '/images/eau1L.png',
     '/images/boissons-energetique.jpg',
@@ -139,6 +142,7 @@ const categoryImages = {
   ],
   dessert: [
     '/images/jwejem-classique.jpg',
+    '/images/black.jpg',
     '/images/jawjem-712.jpg',
     '/images/jus-kiwi-banane.jpg',
     '/images/jus-fraise-banane.jpg',
@@ -172,11 +176,13 @@ const categoryImages = {
   ],
   games: [
     '/images/belote.jpg',
+    '/images/black.jpg',
     
   ],
   smoking: [
     '/images/chicha.jpg',
     '/images/chicha-menthe.png',
+    '/images/black.jpg',
     
   ],
 };
