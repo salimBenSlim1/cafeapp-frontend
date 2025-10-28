@@ -1,26 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
+import { ArrowLeft, Loader2 } from 'lucide-react';
+import api from '../../api/axiosInstance';
+
 export default function QRCodesDashboard() {
   const [tables, setTables] = useState([]);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api/getQRCodes`, {
+    api.get(`/getQRCodes`, {
       headers: { "x-api-key": `${localStorage.getItem('token')}` }
     })
     .then(res => {setTables(res.data);console.log(res.data)})
     .catch(err => console.error(err));
   }, []);
 
-  // const handleDownloadPDF = () => {
-  //   axios.get("http://localhost:5000/api/downloadQRCodesPDF",{
-  //     headers:{'x-api-key':localStorage.getItem('token')}
-  //   })
-  // };
-
-
   const handleDownload = async () => {
-  
+    setIsDownloading(true);
 
     try {
       console.log('🔄 Début du téléchargement...');
@@ -28,15 +24,13 @@ export default function QRCodesDashboard() {
       const response = await axios({
         url: `${process.env.REACT_APP_API_URL}/api/downloadQRCodesPDF`,
         method: 'GET',
-        responseType: 'blob', // CRITIQUE: doit être 'blob'
-        timeout: 30000, // 30 secondes timeout
+        responseType: 'blob',
+        timeout: 30000,
         headers: {
           'Accept': 'application/pdf',
           "x-api-key":localStorage.getItem('token')
         }
       });
-
-      
 
       // Vérifier que c'est bien un PDF
       if (!response.data.type.includes('pdf') && response.data.type !== 'application/octet-stream') {
@@ -62,70 +56,73 @@ export default function QRCodesDashboard() {
         window.URL.revokeObjectURL(url);
       }, 100);
 
-
     } catch (error) {
-      
       let errorMessage = 'Erreur lors du téléchargement du PDF';
 
       if (error.response) {
-        // Erreur du serveur
-      
         errorMessage = `Erreur serveur: ${error.response.status}`;
       } else if (error.request) {
-        // Pas de réponse du serveur
         errorMessage = 'Pas de réponse du serveur. Vérifiez votre connexion.';
       } else if (error.message.includes('Could not establish connection')) {
-        // Extension de navigateur qui bloque
         errorMessage = 'Une extension de navigateur bloque le téléchargement. Essayez en navigation privée.';
       } else {
         errorMessage = error.message;
       }
-      console.log(errorMessage)
-
-        }
+      console.log(errorMessage);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
       <h1 className="text-3xl font-bold text-center mb-8">QR Codes des Tables</h1>
-<div className="fixed top-6 left-6 z-50">
-        <button onClick={() => window.history.back()} className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition">
+      
+      {/* Fixed header with back button and download button */}
+      <div className="fixed top-6 left-6 right-6 z-50 flex justify-between items-center">
+        <button 
+          onClick={() => window.history.back()} 
+          className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition bg-white shadow-md"
+        >
           <ArrowLeft size={20} />
           <span className="hidden sm:inline">Retour</span>
         </button>
+
+        <button
+          onClick={handleDownload}
+          disabled={tables.length === 0 || isDownloading}
+          className={`px-6 py-3 rounded-full transition flex items-center gap-2 shadow-md
+            ${tables.length === 0 || isDownloading
+              ? 'bg-gray-400 cursor-not-allowed text-gray-200'
+              : 'bg-black text-white hover:bg-gray-800'}
+          `}
+        >
+          {isDownloading ? (
+            <>
+              <Loader2 size={20} className="animate-spin" />
+              <span>Téléchargement...</span>
+            </>
+          ) : (
+            <span>Télécharger PDF</span>
+          )}
+        </button>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {tables.length!==0?tables.map((t) => (
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-16">
+        {tables.length !== 0 && tables.map((t) => (
           <div
             key={t.id}
             className="bg-white p-4 rounded-2xl shadow-md text-center border hover:shadow-lg transition"
           >
-            <img src={`https://api.qrserver.com/v1/create-qr-code/?data=${t.qrCodeURL}&size=400x400`}  alt={`QR Table ${t.number}`} className="mx-auto mb-3 w-[400px] h-[400px]" />
+            <img 
+              src={`https://api.qrserver.com/v1/create-qr-code/?data=${t.qrCodeURL}&size=400x400`}  
+              alt={`QR Table ${t.number}`} 
+              className="mx-auto mb-3 w-[400px] h-[400px]" 
+            />
             <p className="font-bold text-lg">Table {t.number}</p>
             <p className="font-bold text-lg">URl: {t.qrCodeURL}</p>
           </div>
-        )):(
-          <div>
-            contactez l'administration pour génerer les qrCodes
-            Email:salimbenslim09@gmail.com
-
-          </div>
-        )}
-      </div>
-
-      <div className="text-center mt-8">
-        <button
-  onClick={handleDownload}
-  disabled={tables.length === 0} // 👈 disable when no tables
-  className={`px-6 py-3 rounded-xl transition 
-    ${tables.length === 0 
-      ? 'bg-gray-400 cursor-not-allowed text-gray-200' // disabled style
-      : 'bg-black text-white hover:bg-gray-800'}` // active style
-  }
->
-  Télécharger PDF
-</button>
-
+        ))}
       </div>
     </div>
   );

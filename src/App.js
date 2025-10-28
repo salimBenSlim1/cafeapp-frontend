@@ -14,6 +14,7 @@ import AdminAgent from './components/admin/AdminAgent';
 import UserOrderPage from './components/user/UserOrderPage';
 import PaymentSuccess from './components/Success';
 import PaymentFailed from './components/Failed';
+import AdminLogin from './components/getInfos/LoginAdmin';
 
 // Create a custom theme
 const theme = createTheme({
@@ -49,6 +50,7 @@ function App() {
           <Route path="/" element={<CafeAppLanding />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/getInfo" element={<GetInfos />} />
+          <Route path="/login/admin" element={<AdminLogin />} />
 
           {/* Admin routes */}
           <Route path="/admin/qrcode" element={<QRCodesDashboard />} />

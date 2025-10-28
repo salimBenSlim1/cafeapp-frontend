@@ -76,7 +76,7 @@ export default function LoginPage() {
           </div>
           <h3 className="text-3xl font-bold mb-4 gradient-text">Connexion réussie ! 🎉</h3>
           <p className="text-xl text-gray-400 mb-6">
-            Bienvenue sur Caffin
+            Bienvenue sur CoffAI
           </p>
           <p className="text-gray-500">
             Redirection vers votre dashboard...
@@ -181,7 +181,7 @@ export default function LoginPage() {
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 text-3xl font-bold mb-4">
               <Coffee className="text-blue-400" size={40} />
-              <span className="gradient-text">Caffin</span>
+              <span className="gradient-text">CoffAI</span>
             </div>
             <h1 className="text-3xl font-bold mb-2">
               Bon retour !

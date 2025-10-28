@@ -288,23 +288,7 @@ export default function RegistrationForm() {
         </div>
       </div>
 
-      <div className="mb-6">
-        <label className="block text-sm font-semibold mb-2 text-gray-300">
-          Domaine personnalisé <span className="text-gray-500">(optionnel)</span>
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            name="domaine"
-            value={formData.domaine}
-            onChange={handleChange}
-            placeholder="votrecafe"
-            className="flex-1 px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
-          />
-          <span className="text-gray-400">.cafeapp.tn</span>
-        </div>
-        <p className="text-gray-500 text-sm mt-1">Laissez vide pour un domaine automatique</p>
-      </div>
+     
 
       <div className="mb-6">
         <label className="block text-sm font-semibold mb-2 text-gray-300">

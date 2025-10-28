@@ -13,6 +13,7 @@ export default function CafeAppLanding() {
   const heroRef = useRef(null);
   const featuresRef = useRef(null);
   const pricingRef = useRef(null);
+  const registerRef = useRef(null);
   const navigate=useNavigate()
   useEffect(() => {
     // Smooth scroll reveal animations
@@ -109,7 +110,7 @@ export default function CafeAppLanding() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-2xl font-bold">
             <Coffee className="text-blue-400" size={32} />
-            <span className="gradient-text">Caffin</span>
+            <span className="gradient-text">CoffAI</span>
           </div>
           
           <div className="hidden md:flex items-center gap-8">
@@ -154,7 +155,7 @@ export default function CafeAppLanding() {
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
             Transformez votre café avec <br />
-            <span className="gradient-text">Caffin</span>
+            <span className="gradient-text">CoffAI</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto">
@@ -164,6 +165,10 @@ export default function CafeAppLanding() {
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <button 
+           onClick={() => {
+                  const formSection = document.getElementById('form');
+                  formSection?.scrollIntoView({ behavior: 'smooth' });
+                }}
             className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition glow-btn flex items-center gap-2">
               Commencer Gratuitement <ChevronRight />
             </button>
@@ -244,7 +249,164 @@ export default function CafeAppLanding() {
       </section>
 
       {/* Pricing Section */}
-     
+     {/* Why Us Section */}
+      <section className="py-32 px-6 relative bg-gradient-to-b from-transparent to-blue-950/20">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-20 reveal">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              Pourquoi <span className="gradient-text">choisir CoffAI ?</span>
+            </h2>
+            <p className="text-xl text-gray-400">Des milliers de cafés nous font confiance</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { 
+                icon: Zap, 
+                title: 'Installation en 1 minute', 
+                desc: 'Configurez votre café digital en moins de 60 secondes. Aucune compétence technique requise.',
+                stat: '< 1 min'
+              },
+              { 
+                icon: Coffee, 
+                title: 'Facile à utiliser', 
+                desc: 'Interface intuitive pour vous et vos clients. Formation incluse gratuitement.',
+                stat: '5/5'
+              },
+              { 
+                icon: Star, 
+                title: '20+ cafés nous font confiance', 
+                desc: 'Rejoignez les cafés qui ont déjà transformé leur service avec CoffAI.',
+                stat: '20+'
+              },
+              { 
+                icon: Check, 
+                title: 'Zéro installation', 
+                desc: 'Aucun logiciel à installer. Tout fonctionne directement depuis votre navigateur.',
+                stat: '100% Cloud'
+              }
+            ].map((item, i) => (
+              <div key={i} className="reveal glass rounded-3xl p-8 hover:scale-105 transition duration-300 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl flex items-center justify-center mb-4 mx-auto">
+                  <item.icon size={28} />
+                </div>
+                <div className="text-3xl font-bold gradient-text mb-3">{item.stat}</div>
+                <h3 className="text-xl font-bold mb-3">{item.title}</h3>
+                <p className="text-gray-400 text-sm">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-16 reveal text-center">
+            <div className="glass rounded-3xl p-12 inline-block">
+              <div className="flex flex-wrap items-center justify-center gap-8">
+                <div className="text-center">
+                  <div className="text-4xl font-bold gradient-text mb-2">1000+</div>
+                  <div className="text-gray-400">Commandes traitées</div>
+                </div>
+                <div className="hidden md:block w-px h-16 bg-white/10"></div>
+                <div className="text-center">
+                  <div className="text-4xl font-bold gradient-text mb-2">99.9%</div>
+                  <div className="text-gray-400">Disponibilité</div>
+                </div>
+                <div className="hidden md:block w-px h-16 bg-white/10"></div>
+                <div className="text-center">
+                  <div className="text-4xl font-bold gradient-text mb-2">24/7</div>
+                  <div className="text-gray-400">Support client</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section ref={pricingRef} className="py-32 px-6 relative">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-20 reveal">
+            <h2 className="text-4xl md:text-5xl font-bold mb-6">
+              Un tarif simple et <span className="gradient-text">transparent</span>
+            </h2>
+            <p className="text-xl text-gray-400">Essai gratuit de 14 jours • Sans engagement • Annulez à tout moment</p>
+          </div>
+
+          <div className="max-w-2xl mx-auto reveal">
+            <div className="glass rounded-3xl p-12 border-2 border-blue-500/50 relative overflow-hidden">
+              <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-600 to-cyan-600 text-white px-6 py-2 rounded-bl-2xl font-semibold">
+                Populaire
+              </div>
+              
+              <div className="text-center mb-8">
+                <h3 className="text-3xl font-bold mb-4">Plan Mensuel</h3>
+                <div className="flex items-end justify-center gap-2 mb-6">
+                  <span className="text-6xl font-bold gradient-text">49 TND</span>
+                  <span className="text-2xl text-gray-400 mb-2">/mois</span>
+                </div>
+                <p className="text-gray-400">Tout ce dont vous avez besoin pour digitaliser votre café</p>
+              </div>
+
+              <div className="space-y-4 mb-8">
+                {[
+                  'Menu QR code personnalisé illimité',
+                  'Dashboard administrateur complet',
+                  'Commandes en temps réel',
+                  'Notifications instantanées',
+                  'Statistiques et rapports détaillés',
+                  'Gestion des produits et catégories',
+                  'Support client prioritaire 24/7',
+                  'Mises à jour automatiques gratuites',
+                  'Stockage cloud sécurisé',
+                  'Formation et documentation complète'
+                ].map((feature, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <Check className="text-green-400 flex-shrink-0 mt-1" size={20} />
+                    <span className="text-gray-300">{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="glass rounded-2xl p-6 mb-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl flex items-center justify-center">
+                    <Star size={24} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-lg">Essai gratuit de 14 jours</div>
+                    <div className="text-sm text-gray-400">Sans carte bancaire requise</div>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-400">
+                  Testez toutes les fonctionnalités gratuitement pendant 14 jours. 
+                  Aucun engagement, annulez à tout moment.
+                </p>
+              </div>
+
+              <button 
+                onClick={() => {
+                  const formSection = document.getElementById('form');
+                  formSection?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition glow-btn flex items-center justify-center gap-2"
+              >
+                Commencer l'essai gratuit <ChevronRight />
+              </button>
+
+              <p className="text-center text-sm text-gray-500 mt-6">
+                Le paiement sera disponible après la période d'essai
+              </p>
+            </div>
+
+            <div className="mt-12 text-center reveal">
+              <div className="glass rounded-2xl p-6 inline-block">
+                <p className="text-gray-400 mb-2">🔒 Paiement 100% sécurisé</p>
+                <p className="text-sm text-gray-500">Vos données sont protégées et cryptées</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Registration Form Section */}
 
       {/* Registration Form Section */}
       <section className="py-32 px-6 relative" id='form'>
@@ -258,7 +420,7 @@ export default function CafeAppLanding() {
             </p>
           </div>
 
-          <RegistrationForm />
+          <RegistrationForm ref={registerRef}/>
         </div>
       </section>
 
@@ -267,10 +429,10 @@ export default function CafeAppLanding() {
         <div className="max-w-6xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 text-2xl font-bold mb-6">
             <Coffee className="text-blue-400" size={32} />
-            <span className="gradient-text">Caffin</span>
+            <span className="gradient-text">CoffAI</span>
           </div>
           <p className="text-gray-400 mb-6">La solution digitale pour les cafés modernes</p>
-          <p className="text-gray-500 mt-8">© 2025 Caffin. Made in Tunisia</p>
+          <p className="text-gray-500 mt-8">© 2025 CoffAI. Made in Tunisia</p>
         </div>
       </footer>
 
@@ -279,7 +441,7 @@ export default function CafeAppLanding() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6" onClick={() => setIsVideoOpen(false)}>
           <div className="glass rounded-3xl p-8 max-w-4xl w-full" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold">Démo Caffin</h3>
+              <h3 className="text-2xl font-bold">Démo CoffAI</h3>
               <button onClick={() => setIsVideoOpen(false)}>
                 <X size={32} />
               </button>

@@ -39,7 +39,7 @@ export default function ProtectedAdminDashboard() {
     setProcessingPayment(true);
     try {
       // Remplacer par votre logique de paiement
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/pay`, {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/pay`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -386,20 +386,7 @@ export default function ProtectedAdminDashboard() {
         </div>
 
         {/* Footer Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center hover:bg-slate-800/50 transition-colors">
-            <div className="text-3xl font-bold text-white mb-2">5</div>
-            <div className="text-slate-400 text-sm">Active Modules</div>
-          </div>
-          <div className="bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center hover:bg-slate-800/50 transition-colors">
-            <div className="text-3xl font-bold text-emerald-400 mb-2">100%</div>
-            <div className="text-slate-400 text-sm">System Health</div>
-          </div>
-          <div className="bg-slate-800/30 backdrop-blur-xl border border-slate-700/50 rounded-xl p-6 text-center hover:bg-slate-800/50 transition-colors">
-            <div className="text-3xl font-bold text-blue-400 mb-2">24/7</div>
-            <div className="text-slate-400 text-sm">Support Available</div>
-          </div>
-        </div>
+      
       </div>
 
       <style>{`
