@@ -387,7 +387,7 @@ const GetInfos = () => {
                                                                 className="flex items-center gap-2 hover:text-blue-400 transition"
                                                             >
                                                                 <div>
-                                                                    <div className="text-white font-semibold">{cafe.payments?.length || 0} paiement{(cafe.payments?.length || 0) > 1 ? 's' : ''}</div>
+                                                                    <div className="text-white font-semibold">{cafe.Payments?.length || 0} paiement{(cafe.Payments?.length || 0) > 1 ? 's' : ''}</div>
                                                                     <div className="text-xs text-green-400">
                                                                         {cafe.Payments?.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0).toFixed(2)} DT
                                                                     </div>
