@@ -389,7 +389,7 @@ const GetInfos = () => {
                                                                 <div>
                                                                     <div className="text-white font-semibold">{cafe.payments?.length || 0} paiement{(cafe.payments?.length || 0) > 1 ? 's' : ''}</div>
                                                                     <div className="text-xs text-green-400">
-                                                                        {cafe.payments?.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0).toFixed(2)} DT
+                                                                        {cafe.Payments?.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0).toFixed(2)} DT
                                                                     </div>
                                                                 </div>
                                                                 {expandedCafe === cafe.id ? 
@@ -544,14 +544,14 @@ const GetInfos = () => {
                                                                     </div>
 
                                                                     {/* Payment History */}
-                                                                    {cafe.payments?.length > 0 && (
+                                                                    {cafe.Payments?.length > 0 && (
                                                                         <div>
                                                                             <h4 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2">
                                                                                 <CreditCard className="w-4 h-4" />
                                                                                 Historique des paiements
                                                                             </h4>
                                                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                                                {cafe.payments.map((payment, pIndex) => (
+                                                                                {cafe.Payments.map((payment, pIndex) => (
                                                                                     <div key={pIndex} className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition">
                                                                                         
                                                                                         {console.log(payment)}
