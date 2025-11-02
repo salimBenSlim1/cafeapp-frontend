@@ -559,7 +559,7 @@ const handlePrintReceipt = (order) => {
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                updateOrderStatus(order.id, 'canceled', order.tableId);
+                                updateOrderStatus(order.id, 'canceled', order.Table.number);
                               }}
                               className="bg-red-600 rounded-2xl hover:bg-red-700 text-white font-semibold py-2 px-3 transition"
                             >
