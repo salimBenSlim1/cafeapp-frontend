@@ -544,12 +544,13 @@ const handlePrintReceipt = (order) => {
                         {order.totalPrice.toFixed(2)} TnD
                       </TableCell>
                <TableCell className="table-cell status-cell">
+                {console.log(order,"ee")}
                         {viewMode === 'pending' ? (
                           <Box sx={{ display: 'flex', gap: 1 }}>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                updateOrderStatus(order.id, 'served', order.tableId);
+                                updateOrderStatus(order.id, 'served', order.Table.number);
                               }}
                               className="bg-green-600 rounded-2xl hover:bg-green-700 text-white font-semibold py-2 px-3 transition"
                             >
