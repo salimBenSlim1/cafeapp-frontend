@@ -289,35 +289,35 @@ const print = async (id) => {
 
   
 
- const toggleTableSelection = async (tableId) => {
+const toggleTableSelection = async (tableNumber) => {
     try {
-   
-      const isCurrentlySelected = selectedTables.includes(tableId);
+      const table = availableTables.find(t => t.number === tableNumber);
+      const isCurrentlySelected = selectedTables.includes(table.id);
       
-      await api.put('/assign-tables/' + tableId, 
+      await api.put('/assign-tables/' + tableNumber, 
         { id: selectedWaiter.id }, 
         { headers: { 'x-api-key': localStorage.getItem('token') } }
       );
       
       // Mettre à jour l'état local immédiatement
       if (isCurrentlySelected) {
-        setSelectedTables(selectedTables.filter(id => id !== tableId));
+        setSelectedTables(selectedTables.filter(id => id !== table.id));
         // Retirer l'assignation dans availableTables
         setAvailableTables(prevTables => 
-          prevTables.map(table => 
-            table.id === tableId 
-              ? { ...table, assignedTo: null } 
-              : table
+          prevTables.map(t => 
+            t.number === tableNumber 
+              ? { ...t, assignedTo: null } 
+              : t
           )
         );
       } else {
-        setSelectedTables([...selectedTables, tableId]);
+        setSelectedTables([...selectedTables, table.id]);
         // Ajouter l'assignation dans availableTables
         setAvailableTables(prevTables => 
-          prevTables.map(table => 
-            table.id === tableId 
-              ? { ...table, assignedTo: selectedWaiter.id } 
-              : table
+          prevTables.map(t => 
+            t.number === tableNumber 
+              ? { ...t, assignedTo: selectedWaiter.id } 
+              : t
           )
         );
       }
