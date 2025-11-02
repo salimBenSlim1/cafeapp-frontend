@@ -53,7 +53,6 @@ export default function ManageWaiters() {
         headers: { 'x-api-key': localStorage.getItem('token') }
       });
       setAvailableTables(data.data);
-      console.log(data.data);
     } catch (error) {
       console.error('Error loading tables:', error);
     }
@@ -210,7 +209,6 @@ const print = async (id) => {
     );
     
     const data = response.data;
-    console.log('Server Report Data:', data);
     
     // Appeler la fonction d'impression
     handlePrintServerReport(data);
@@ -293,6 +291,7 @@ const print = async (id) => {
 
  const toggleTableSelection = async (tableId) => {
     try {
+   
       const isCurrentlySelected = selectedTables.includes(tableId);
       
       await api.put('/assign-tables/' + tableId, 
@@ -694,7 +693,7 @@ const print = async (id) => {
                 return (
                   <button
                     key={table.id}
-                    onClick={() => !isAssignedToOther && toggleTableSelection(table.id)}
+                    onClick={() => !isAssignedToOther && toggleTableSelection(table.number)}
                     disabled={isAssignedToOther}
                     className={`p-4 rounded-xl border-2 transition-all ${
                       isSelected
