@@ -52,14 +52,7 @@ export default function CafeAppLanding() {
     setIsMenuOpen(false);
   };
 
-  const handlePayment = (amount) => {
-    // Payment handler - kept from original
-    axios.post('http://localhost:5000/pay',{
-      amount,
-    }).then(r=>{
-      window.location.href=r.data.payUrl
-    })
-  };
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white overflow-hidden">

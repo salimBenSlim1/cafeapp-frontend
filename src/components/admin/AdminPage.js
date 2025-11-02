@@ -1,20 +1,21 @@
 import { useState, useEffect } from 'react';
-import { LayoutDashboard, Package, ShoppingCart, Sparkles, QrCode, TrendingUp, Lock, CreditCard, Check, Star, AlertCircle, Loader2 } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingCart, Sparkles, QrCode, TrendingUp, Lock, CreditCard, Check, Star, AlertCircle, Loader2, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function ProtectedAdminDashboard() {
   const [isPaid, setIsPaid] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [userPlan, setUserPlan] = useState("basic");
+  const [userPlan, setUserPlan] = useState("VIP");
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
-
+  const navigate=useNavigate()
   // Vérifier le statut de paiement au chargement
   useEffect(() => {
     checkPaymentStatus();
   }, []);
 
-  const checkPaymentStatus = async () => {
+   const checkPaymentStatus = async () => {
     setIsLoading(true);
     try {
       // Remplacer par votre API call
@@ -25,6 +26,7 @@ export default function ProtectedAdminDashboard() {
       });
       const data = await response.json();
       console.log(data,'ze')
+      localStorage.setItem('path',`?id=${data.Cafe.id}`)
       setIsPaid(data.Cafe.verifiedPayment);
       setUserPlan(data.Cafe.plan);
       setIsLoading(false);
@@ -38,24 +40,9 @@ export default function ProtectedAdminDashboard() {
   const handlePayment = async (planName, price) => {
     setProcessingPayment(true);
     try {
-      // Remplacer par votre logique de paiement
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/pay`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': `${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          amount: price*1000
-        })
-      });
-      
-      const data = await response.json();
-      console.log(data)
-      if (data.payUrl) {
-        // Rediriger vers la page de paiement
-        window.location.href = data.payUrl;
-      }
+      // Simulation
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      alert('Payment simulation - would redirect to payment gateway');
     } catch (error) {
       console.error('Payment error:', error);
       alert('Erreur lors du traitement du paiement. Veuillez réessayer.');
@@ -94,6 +81,15 @@ export default function ProtectedAdminDashboard() {
     },
     {
       id: 4,
+      title: 'Manage Waiters',
+      description: 'Staff management & scheduling',
+      path: '/admin/waiters',
+      icon: Users,
+      gradient: 'from-amber-500 to-orange-600',
+      glowColor: 'amber-500'
+    },
+    {
+      id: 5,
       title: 'AI Agent',
       description: 'Smart assistant & automation',
       path: '/admin/agent',
@@ -102,7 +98,7 @@ export default function ProtectedAdminDashboard() {
       glowColor: 'indigo-500'
     },
     {
-      id: 5,
+      id: 6,
       title: 'QR Codes',
       description: 'Generate table QR codes',
       path: '/admin/qrcode',
@@ -321,8 +317,13 @@ export default function ProtectedAdminDashboard() {
 
             {/* Plan Badge */}
             {userPlan && (
-              <div className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 rounded-full shadow-lg">
-                <span className="text-white font-semibold">Plan: {userPlan}</span>
+              <div className="bg-gradient-to-r from-red-600 to-red-600 px-6 py-3 rounded-full shadow-lg">
+                <span 
+                onClick={()=>{
+                  localStorage.clear()
+                  navigate('/login')
+                }}
+                className="text-white cursor-pointer font-semibold">Deconnect</span>
               </div>
             )}
           </div>
@@ -335,7 +336,7 @@ export default function ProtectedAdminDashboard() {
             return (
               <div
                 key={item.id}
-                onClick={() => window.location.href = item.path}
+                onClick={() => navigate(`${item.path}`)}
                 onMouseEnter={() => setHoveredCard(item.id)}
                 onMouseLeave={() => setHoveredCard(null)}
                 className="group relative cursor-pointer"
@@ -384,9 +385,6 @@ export default function ProtectedAdminDashboard() {
             );
           })}
         </div>
-
-        {/* Footer Stats */}
-      
       </div>
 
       <style>{`

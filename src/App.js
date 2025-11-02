@@ -15,6 +15,9 @@ import UserOrderPage from './components/user/UserOrderPage';
 import PaymentSuccess from './components/Success';
 import PaymentFailed from './components/Failed';
 import AdminLogin from './components/getInfos/LoginAdmin';
+import ManageWaiters from './components/admin/AdminMangeWaiter';
+import ServerLogin from './components/server/ServerLogin';
+import ServerDashboard from './components/server/ServerDash';
 
 // Create a custom theme
 const theme = createTheme({
@@ -59,11 +62,14 @@ function App() {
           <Route path="/admin/items" element={<AdminItems />} />
           <Route path="/admin/charts" element={<AdminCharts />} />
           <Route path="/admin/agent" element={<AdminAgent />} />
+          <Route path="/admin/waiters" element={<ManageWaiters />} />
           {/* Add your customer-facing routes here */}
 
           <Route path="/client-panier" element={<UserOrderPage />} />
           <Route path="/success" element={<PaymentSuccess />} />
           <Route path="/cancel" element={<PaymentFailed />} />
+          <Route path="/server-login" element={<ServerLogin />} />
+          <Route path="/server-dashboard" element={<ServerDashboard />} />
           
         </Routes>
       </Router>

@@ -66,7 +66,7 @@ function AdminOrders() {
       transports: ['websocket', 'polling'],
       withCredentials: true
     });
-    
+    newSocket.emit('joinCafe',{cafeId:localStorage.getItem('token')})
     newSocket.on('newAlert', (data) => {
       setAlerts((prev) => [...prev, data]);
     });

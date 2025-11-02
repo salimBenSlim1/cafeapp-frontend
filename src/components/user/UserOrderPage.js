@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Plus, Minus, X, Receipt } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {io} from 'socket.io-client';
 
@@ -23,6 +23,7 @@ function UserOrderPage() {
   const location = useLocation();
   const queryParams = new URLSearchParams(location.search);
   const qrKey = queryParams.get("t");
+  const navigate = useNavigate();
 
   // Load orders from localStorage on component mount
   useEffect(() => {
@@ -38,32 +39,33 @@ function UserOrderPage() {
   }, []);
 
   // Socket.IO connection for status updates
-  useEffect(() => {
-    if (!sessionActive) return;
+const [socket, setSocket] = useState(null);
 
-     const SOCKET_URL = process.env.REACT_APP_WS_URL;
-    const newSocket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      withCredentials: true
-    });
-    
-   
-    
-    newSocket.on('statusUpdated', (data) => {
+useEffect(() => {
+  if (!sessionActive) return;
 
-      // Trigger session expired
-      setSessionExpired(true);
-      
-      // Navigate to Google after 5 seconds
-      setTimeout(() => {
-        window.location.href = 'https://www.google.com';
-      }, 5000);
-    });
+  const SOCKET_URL = process.env.REACT_APP_WS_URL;
+  const newSocket = io(SOCKET_URL, {
+    transports: ['websocket', 'polling'],
+    withCredentials: true
+  });
 
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [sessionActive, API_BASE]);
+  newSocket.on('statusUpdated', (data) => {
+    sessionStorage.clear();
+    localStorage.setItem('userOrders', JSON.stringify([]));
+    setSessionExpired(true);
+    setTimeout(() => {
+      window.location.href = 'https://www.google.com';
+    }, 5000);
+  });
+
+  setSocket(newSocket);
+
+  return () => {
+    newSocket.disconnect();
+  };
+}, [sessionActive]);
+
 
   // Save orders to localStorage whenever they change
   useEffect(() => {
@@ -76,6 +78,7 @@ function UserOrderPage() {
   useEffect(() => {
     const initializeSession = async () => {
       try {
+        if (!qrKey) return setLoading(false);
         const response = await axios.get(`${API_BASE}/start-session`, {
           params: { key: qrKey }
         });
@@ -85,7 +88,7 @@ function UserOrderPage() {
         sessionStorage.setItem('c', response.data.cafeId);
         sessionStorage.setItem('ti', response.data.tableNumber);
         sessionStorage.setItem('sessionKey', qrKey);
-
+        await navigate(location.pathname, { replace: true }); // removes all params
         setSessionActive(true);
         loadProducts(response.data.cafeId);
       } catch (err) {
@@ -95,7 +98,7 @@ function UserOrderPage() {
     };
 
     initializeSession();
-  }, [qrKey]);
+  }, []);
 
   const loadProducts = async (cafeId) => {
     try {
@@ -189,11 +192,12 @@ function UserOrderPage() {
     try {
       const response = await axios.post(`${API_BASE}/addOrder`, payload, {
         headers: {
-          key: qrKey,
+          key: sessionStorage.getItem('sessionKey'),
           token: sessionStorage.getItem('t')
         }
       });
       console.log('Order placed successfully:', response.data);
+      socket.emit('userJoin',{id:response.data.orderId})
       setRefresh(!refresh);
       setCart([]);
       setOpenCart(false);
@@ -219,7 +223,8 @@ function UserOrderPage() {
     }
   };
 
-  const categories = ['all', 'Coffee', 'Food', 'Drink', 'Dessert', 'Games', 'Smoking'];
+  
+  const categories = ['all', 'coffee', 'food', 'drink', 'dessert', 'games', 'smoking'];
 
   // Session Expired Screen
   if (sessionExpired) {
