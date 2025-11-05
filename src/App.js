@@ -6,6 +6,7 @@ import AdminOrders from './components/admin/AdminOrders';
 import AdminItems from './components/admin/AdminItems';
 import AdminHome from './components/admin/AdminPage';
 import CafeAppLanding from './components/saas/CafeAppLanding';
+import { SpeedInsights } from "@vercel/speed-insights/react"
 import LoginPage from './components/saas/LoginPage';
 import GetInfos from './components/getInfos/GetInfo';
 import QRCodesDashboard from './components/admin/QRCodesDashboard';
@@ -47,6 +48,7 @@ const theme = createTheme({
 function App() {
   return (
     <ThemeProvider theme={theme}>
+      <SpeedInsights/>
       <CssBaseline />
       <Router>
         <Routes>
