@@ -194,7 +194,7 @@ export default function CafeAppLanding() {
 
      <div className="grid md:grid-cols-3 gap-8">
   {[
-    { icon: CreditCard, title: '1. Select Plan', desc: 'Choose the perfect plan for your cafe and start your 14-day free trial', color: 'from-blue-600 to-cyan-600' },
+    { icon: CreditCard, title: '1. Select Plan', desc: 'Choose the perfect plan for your cafe and start your 7-day free trial', color: 'from-blue-600 to-cyan-600' },
     { icon: UserPlus, title: '2. Join Us', desc: 'Complete registration and get instant access to your dashboard', color: 'from-cyan-600 to-teal-600' },
     { icon: QrCode, title: '3. Start Working', desc: 'Print your QR codes, place them on tables, and start receiving orders', color: 'from-teal-600 to-green-600' }
   ].map((item, i) => (
