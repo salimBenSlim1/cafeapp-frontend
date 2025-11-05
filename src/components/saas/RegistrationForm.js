@@ -52,25 +52,25 @@ export default function RegistrationForm() {
     const newErrors = {};
 
     if (!formData?.nomCafe?.trim()) {
-      newErrors.nomCafe = 'Nom du café requis';
+      newErrors.nomCafe = 'Cafe name required';
     }
 
     if (!formData?.nomPerson?.trim()) {
-      newErrors.nomPerson = 'Nom du propriétaire requis';
+      newErrors.nomPerson = 'Owner name required';
     }
 
     if (!formData?.email?.trim()) {
-      newErrors.email = 'Email requis';
+      newErrors.email = 'Email required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email invalide';
+      newErrors.email = 'Invalid email';
     }
 
     if (formData?.phone && !/^[\d\s+()-]{8,}$/.test(formData?.phone)) {
-      newErrors.phone = 'Numéro de téléphone invalide';
+      newErrors.phone = 'Invalid phone number';
     }
 
     if (!captchaVerified) {
-      newErrors.captcha = 'Vérifiez le captcha';
+      newErrors.captcha = 'Verify captcha';
     }
 
     setErrors(newErrors);
@@ -82,11 +82,10 @@ export default function RegistrationForm() {
     
     if (!validateForm()) return;
     
+    setIsSubmitting(true);
+    
    axios.post(`${process.env.REACT_APP_API_URL}/add-new-form`,formData)
     .then(r=>{
-    setIsSubmitting(true);
-
-    // Simulate API call
     setIsSubmitting(false);
     setSubmitSuccess(true);
     // setTimeout(() => {
@@ -108,7 +107,10 @@ export default function RegistrationForm() {
     // }, 2000);
 
     })
-    .catch(err=>console.log(err))
+    .catch(err=>{
+      console.log(err);
+      setIsSubmitting(false);
+    })
   };
 
   const handleChange = (e) => {
@@ -128,12 +130,12 @@ export default function RegistrationForm() {
         <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
           <CheckCircle2 size={48} />
         </div>
-        <h3 className="text-3xl font-bold mb-4 gradient-text">Inscription réussie ! 🎉</h3>
+        <h3 className="text-3xl font-bold mb-4 gradient-text">Registration Successful! 🎉</h3>
         <p className="text-xl text-gray-400 mb-6">
-          Bienvenue chez Caffin, {formData.nomPerson} !
+          Welcome to CoffAI, {formData.nomPerson}!
         </p>
         <p className="text-gray-500">
-          Nous vous contacterons sur <strong className="text-blue-400">{formData.email}</strong>
+          We will contact you at <strong className="text-blue-400">{formData.email}</strong>
         </p>
       </div>
     );
@@ -174,14 +176,14 @@ export default function RegistrationForm() {
       <div className="grid md:grid-cols-2 gap-6 mb-6">
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-300">
-            Nom du café <span className="text-red-400">*</span>
+            Cafe name <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
             name="nomCafe"
             value={formData.nomCafe}
             onChange={handleChange}
-            placeholder="Ex: Café des Arts"
+            placeholder="Ex: Arts Cafe"
             className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.nomCafe ? 'border-red-500' : 'border-white/10'} text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition`}
           />
           {errors.nomCafe && (
@@ -193,14 +195,14 @@ export default function RegistrationForm() {
 
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-300">
-            Nom du propriétaire <span className="text-red-400">*</span>
+            Owner name <span className="text-red-400">*</span>
           </label>
           <input
             type="text"
             name="nomPerson"
             value={formData.nomPerson}
             onChange={handleChange}
-            placeholder="Ex: Ahmed Ben Salem"
+            placeholder="Ex: John Smith"
             className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.nomPerson ? 'border-red-500' : 'border-white/10'} text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition`}
           />
           {errors.nomPerson && (
@@ -219,7 +221,7 @@ export default function RegistrationForm() {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            placeholder="contact@votrecafe.com"
+            placeholder="contact@yourcafe.com"
             className={`w-full px-4 py-3 rounded-xl bg-white/5 border ${errors.email ? 'border-red-500' : 'border-white/10'} text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition`}
           />
           {errors.email && (
@@ -231,7 +233,7 @@ export default function RegistrationForm() {
 
         <div>
           <label className="block text-sm font-semibold mb-2 text-gray-300">
-            Téléphone <span className="text-gray-500">(optionnel)</span>
+            Phone <span className="text-gray-500">(optional)</span>
           </label>
           <input
             type="tel"
@@ -249,50 +251,49 @@ export default function RegistrationForm() {
         </div>
       </div>
 
-      <div className="mb-6">
-        <label className="block text-sm font-semibold mb-3 text-gray-300">
-          Choisissez votre plan <span className="text-red-400">*</span>
-        </label>
-        <div className="grid md:grid-cols-3 gap-4">
-          {[
-            { value: 'basic', name: 'Basic', price: '39 TND', features: '20 tables max' },
-            { value: 'pro', name: 'Pro', price: '59 TND', features: '50 tables + AI', popular: true },
-            { value: 'premium', name: 'Premium', price: '99 TND', features: 'Illimité + Support 24/7' }
-          ].map(plan => (
-            <label
-              key={plan.value}
-              className={`relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition ${
-                formData.plan === plan.value
-                  ? 'border-blue-600 bg-blue-600/10'
-                  : 'border-white/10 bg-white/5 hover:border-blue-600/50'
-              }`}
-            >
-              <input
-                type="radio"
-                name="plan"
-                value={plan.value}
-                checked={formData.plan === plan.value}
-                onChange={handleChange}
-                className="sr-only"
-              />
-              {plan.popular && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-cyan-600 text-xs px-3 py-1 rounded-full font-semibold">
-                  Populaire
-                </span>
-              )}
-              <span className="text-lg font-bold mb-1">{plan.name}</span>
-              <span className="text-2xl font-bold gradient-text mb-2">{plan.price}</span>
-              <span className="text-sm text-gray-400">{plan.features}</span>
-            </label>
-          ))}
-        </div>
-      </div>
+     <div className="mb-6">
+  <label className="block text-sm font-semibold mb-3 text-gray-300">
+    Choose your plan <span className="text-red-400">*</span>
+  </label>
+  <div className="grid md:grid-cols-2 gap-4">
+    {[
+      { value: 'basic', name: 'Basic', price: '69 TND', features: 'Up to 20 tables' },
+      { value: 'pro', name: 'Pro + AI', price: '139 TND', features: '50 tables + AI Agent', popular: true }
+    ].map(plan => (
+      <label
+        key={plan.value}
+        className={`relative flex flex-col p-5 rounded-xl border-2 cursor-pointer transition ${
+          formData.plan === plan.value
+            ? 'border-blue-600 bg-blue-600/10'
+            : 'border-white/10 bg-white/5 hover:border-blue-600/50'
+        }`}
+      >
+        <input
+          type="radio"
+          name="plan"
+          value={plan.value}
+          checked={formData.plan === plan.value}
+          onChange={handleChange}
+          className="sr-only"
+        />
+        {plan.popular && (
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-cyan-600 text-xs px-3 py-1 rounded-full font-semibold">
+            Most Popular
+          </span>
+        )}
+        <span className="text-lg font-bold mb-1">{plan.name}</span>
+        <span className="text-2xl font-bold gradient-text mb-2">{plan.price}<span className="text-base text-gray-400">/month</span></span>
+        <span className="text-sm text-gray-400">{plan.features}</span>
+      </label>
+    ))}
+  </div>
+</div>
 
      
 
       <div className="mb-6">
         <label className="block text-sm font-semibold mb-2 text-gray-300">
-          Vérification anti-robot <span className="text-red-400">*</span>
+          Anti-robot verification <span className="text-red-400">*</span>
         </label>
         <div className="flex items-center gap-4">
           <div className="glass px-6 py-4 rounded-xl flex items-center gap-3 font-mono text-xl">
@@ -312,7 +313,7 @@ export default function RegistrationForm() {
             type="button"
             onClick={generateCaptcha}
             className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition"
-            title="Recharger"
+            title="Reload"
           >
             🔄
           </button>
@@ -328,24 +329,26 @@ export default function RegistrationForm() {
         type="button"
         onClick={handleSubmit}
         disabled={isSubmitting}
-        className={`w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-xl text-lg font-semibold transition ${
-          isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] glow-btn'
+        className={`w-full px-8 py-4 rounded-xl text-lg font-semibold transition ${
+          isSubmitting 
+            ? 'bg-gray-600 cursor-not-allowed' 
+            : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:scale-[1.02] glow-btn'
         }`}
       >
         {isSubmitting ? (
           <span className="flex items-center justify-center gap-2">
             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            Inscription en cours...
+            Registration in progress...
           </span>
         ) : (
           <span className="flex items-center justify-center gap-2">
-            Créer mon café digital <ChevronRight />
+            Create my digital cafe <ChevronRight />
           </span>
         )}
       </button>
 
       <p className="text-center text-gray-500 text-sm mt-4">
-        ✨ Essai gratuit de 14 jours • Sans carte bancaire • Annulation à tout moment
+        ✨ 14-day free trial • No credit card • Cancel anytime
       </p>
     </div>
   )}

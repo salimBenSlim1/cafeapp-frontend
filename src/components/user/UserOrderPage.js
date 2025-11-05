@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ShoppingCart, Search, Plus, Minus, X, Receipt } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {io} from 'socket.io-client';
+import { io } from 'socket.io-client';
 
 function UserOrderPage() {
   const [products, setProducts] = useState([]);
@@ -18,12 +18,16 @@ function UserOrderPage() {
   const [loading, setLoading] = useState(true);
   const [orderLoading, setOrderLoading] = useState(false);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [sessionData, setSessionData] = useState(null);
 
   const API_BASE = process.env.REACT_APP_API_URL;
   const location = useLocation();
+  const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
   const qrKey = queryParams.get("t");
-  const navigate = useNavigate();
+
+  // Socket.IO connection
+  const [socket, setSocket] = useState(null);
 
   // Load orders from localStorage on component mount
   useEffect(() => {
@@ -38,35 +42,6 @@ function UserOrderPage() {
     }
   }, []);
 
-  // Socket.IO connection for status updates
-const [socket, setSocket] = useState(null);
-
-useEffect(() => {
-  if (!sessionActive) return;
-
-  const SOCKET_URL = process.env.REACT_APP_WS_URL;
-  const newSocket = io(SOCKET_URL, {
-    transports: ['websocket', 'polling'],
-    withCredentials: true
-  });
-
-  newSocket.on('statusUpdated', (data) => {
-    sessionStorage.clear();
-    localStorage.setItem('userOrders', JSON.stringify([]));
-    setSessionExpired(true);
-    setTimeout(() => {
-      window.location.href = 'https://www.google.com';
-    }, 5000);
-  });
-
-  setSocket(newSocket);
-
-  return () => {
-    newSocket.disconnect();
-  };
-}, [sessionActive]);
-
-
   // Save orders to localStorage whenever they change
   useEffect(() => {
     if (orders.length > 0) {
@@ -74,52 +49,157 @@ useEffect(() => {
     }
   }, [orders]);
 
-  // Session initialization - only runs once when QR code is scanned
+  // Session initialization - Fixed version
   useEffect(() => {
     const initializeSession = async () => {
       try {
-        if (!qrKey) return setLoading(false);
+        const existingToken = localStorage.getItem('userToken');
+        
+        // If we have an existing token and no QR key, try to use existing session
+        if (existingToken && !qrKey) {
+          try {
+            // Verify existing token is still valid by loading products
+            const response = await axios.get(`${API_BASE}/getUserItems`, {
+              headers: { 'Authorization': `Bearer ${existingToken}` }
+            });
+            setProducts(response.data);
+            setFilteredProducts(response.data);
+            setSessionActive(true);
+            setLoading(false);
+            return;
+          } catch (err) {
+            // Token is invalid, remove it
+            console.log('Existing token invalid, clearing...');
+            localStorage.removeItem('userToken');
+          }
+        }
+
+        // No valid session, check for QR key
+        if (!qrKey) {
+          console.log("No QR key and no valid token");
+          setLoading(false);
+          setSessionActive(false);
+          return;
+        }
+
+        // Start new session with QR key
         const response = await axios.get(`${API_BASE}/start-session`, {
           params: { key: qrKey }
         });
+        
+        console.log('Session started:', response.data);
+        const { token, cafeId, tableId } = response.data;
+        if (cafeId) sessionStorage.setItem('c',cafeId)
+        localStorage.setItem('userToken', token);
+        if (tableId) {
+          sessionStorage.setItem('tai', tableId);
+        }
 
-        sessionStorage.setItem('tai', response.data.tableId);
-        sessionStorage.setItem('t', response.data.token);
-        sessionStorage.setItem('c', response.data.cafeId);
-        sessionStorage.setItem('ti', response.data.tableNumber);
-        sessionStorage.setItem('sessionKey', qrKey);
-        await navigate(location.pathname, { replace: true }); // removes all params
-        setSessionActive(true);
-        loadProducts(response.data.cafeId);
+        // Remove QR key from URL after successful session start
+        queryParams.delete("t");
+        const newSearch = queryParams.toString();
+        const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ""}`;
+        navigate(newUrl, { replace: true });
+
+        // Load products after session is established
+        await loadProducts();
+
       } catch (err) {
         console.error('Session initialization failed:', err);
+        if (err.response?.status === 404) {
+          alert('Invalid QR code. Please scan a valid table QR code.');
+        } else if (err.response?.status === 403) {
+          alert('This table is currently inactive. Please contact staff.');
+        } else if (err.response?.status === 410) {
+          // Session expired
+          handleSessionExpired();
+        }
         setLoading(false);
+        setSessionActive(false);
       }
     };
 
     initializeSession();
-  }, []);
+  }, []); // Run only once on mount
 
-  const loadProducts = async (cafeId) => {
-    try {
-      const response = await axios.get(`${API_BASE}/getUserItems/${cafeId}`);
-      setProducts(response.data);
-      setFilteredProducts(response.data);
-    } catch (err) {
-      console.error('Failed to load products:', err);
-    } finally {
-      setLoading(false);
-    }
+  // Socket.IO connection - Fixed dependencies
+  useEffect(() => {
+    if (!sessionActive) return;
+
+    const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
+    const newSocket = io(SOCKET_URL, {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      reconnectionAttempts: Infinity,
+      withCredentials: true,
+      auth: {
+        token: localStorage.getItem('userToken')
+      }
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Socket connected:', newSocket.id);
+      newSocket.emit('userJoin',{id:newSocket.id})
+      // Join cafe room if we have session data
+     
+    });
+
+    newSocket.on('orderStatusUpdate', (data) => {
+      console.log('Order status updated:', data);
+      // Update local orders
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === data.orderId 
+            ? { ...order, status: data.status }
+            : order
+        )
+      );
+    });
+
+    newSocket.on('statusUpdated', (data) => {
+      console.log(data)
+      console.log('Session status updated - expired');
+      handleSessionExpired();
+    });
+
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, [sessionActive, sessionData?.cafeId]);
+
+  const handleSessionExpired = () => {
+    localStorage.removeItem('userToken');
+    localStorage.removeItem('userOrders');
+    sessionStorage.removeItem('tai');
+    setSessionExpired(true);
+    
+    setTimeout(() => {
+      window.location.href = 'https://www.google.com';
+    }, 5000);
   };
 
-  useEffect(() => {
-    if (sessionActive && refresh) {
-      const cafeId = sessionStorage.getItem('c');
-      if (cafeId) {
-        loadProducts(cafeId);
+  const loadProducts = async () => {
+    try {
+      const response = await axios.get(`${API_BASE}/getUserItems`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
+      });
+      setProducts(response.data);
+      setFilteredProducts(response.data);
+      setSessionActive(true);
+      setLoading(false);
+    } catch (err) {
+      console.error('Failed to load products:', err);
+      if (err.response?.status === 401 || err.response?.status === 410) {
+        handleSessionExpired();
       }
+      setLoading(false);
+      setSessionActive(false);
     }
-  }, [refresh, sessionActive]);
+  };
 
   useEffect(() => {
     let filtered = products;
@@ -169,11 +249,10 @@ useEffect(() => {
 
   const placeOrder = async () => {
     if (!cart.length) return;
-
+    
     setOrderLoading(true);
 
     const payload = {
-      cafeId: sessionStorage.getItem('c'),
       items: cart.map(i => ({ itemId: i.id, quantity: i.quantity }))
     };
 
@@ -186,29 +265,32 @@ useEffect(() => {
       status: 'pending'
     };
 
-    // Add to orders array (which will trigger localStorage save via useEffect)
+    // Add to orders array
     setOrders(prevOrders => [...prevOrders, newOrder]);
-
+    console.log(orders)
+    
     try {
       const response = await axios.post(`${API_BASE}/addOrder`, payload, {
-        headers: {
-          key: sessionStorage.getItem('sessionKey'),
-          token: sessionStorage.getItem('t')
-        }
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
       });
-      console.log('Order placed successfully:', response.data);
       socket.emit('userJoin',{id:response.data.orderId})
+      console.log('Order placed successfully:', response.data);
+      
+      // Update order with real ID from backend
+      setOrders(prevOrders => 
+        prevOrders.map(order => 
+          order.id === newOrder.id 
+            ? { ...order, id: response.data.orderId }
+            : order
+        )
+      );
+
       setRefresh(!refresh);
       setCart([]);
       setOpenCart(false);
     } catch (err) {
       console.error('placeOrder error:', err);
-      if (err.response?.status === 401) {
-        sessionStorage.clear();
-        alert('Session expired. Please scan the QR code again.');
-      } else {
-        alert('Failed to place order. Please try again.');
-      }
+      alert('Failed to place order. Please try again.');
       // Remove order if failed
       setOrders(prevOrders => prevOrders.filter(o => o.id !== newOrder.id));
     } finally {
@@ -223,7 +305,6 @@ useEffect(() => {
     }
   };
 
-  
   const categories = ['all', 'coffee', 'food', 'drink', 'dessert', 'games', 'smoking'];
 
   // Session Expired Screen
@@ -235,16 +316,16 @@ useEffect(() => {
             <img src="/images/coffAI.png" alt="CoffAI Logo" className="w-48 h-48 mx-auto" />
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-            <h1 className="text-3xl font-bold text-white mb-4">Session Expirée</h1>
+            <h1 className="text-3xl font-bold text-white mb-4">Session Expired</h1>
             <p className="text-blue-200 text-lg mb-6">
-              Votre session a expiré. Merci d'avoir utilisé CoffAI!
+              Your session has expired. Thank you for using CoffAI!
             </p>
             <p className="text-slate-300 text-sm mb-4">
-              Bienvenue et à bientôt! 👋
+              See you next time! 👋
             </p>
             <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-slate-400 text-sm">
-              Redirection en cours...
+              Redirecting...
             </p>
           </div>
         </div>
@@ -302,7 +383,7 @@ useEffect(() => {
               <img src="/images/coffAI.png" alt="CoffAI Logo" className="w-16 h-16" />
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">CoffAI Menu</h1>
-                <p className="text-blue-300 text-sm md:text-base">Table {sessionStorage.getItem('tai')}</p>
+                <p className="text-blue-300 text-sm md:text-base">Table {sessionStorage.getItem('tai') || 'N/A'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2 bg-emerald-500/20 px-4 py-2 rounded-full border border-emerald-500/30">

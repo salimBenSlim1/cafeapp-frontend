@@ -179,7 +179,7 @@ export default function ServerLogin() {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-slate-500 text-sm">
-            © 2024 Restaurant Management System
+            © 2025 Restaurant Management System
           </p>
         </div>
       </div>

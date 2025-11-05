@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { LayoutDashboard, Package, ShoppingCart, Sparkles, QrCode, TrendingUp, Lock, CreditCard, Check, Star, AlertCircle, Loader2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import cafeApi from '../../api/cafeApiInstance';
+import axios from 'axios';
 
 export default function ProtectedAdminDashboard() {
   const [isPaid, setIsPaid] = useState(true);
@@ -19,16 +21,11 @@ export default function ProtectedAdminDashboard() {
     setIsLoading(true);
     try {
       // Remplacer par votre API call
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/checkPaymentStatus`, {
-        headers: {
-          'x-api-key': `${localStorage.getItem('token')}`
-        }
-      });
-      const data = await response.json();
-      console.log(data,'ze')
-      localStorage.setItem('path',`?id=${data.Cafe.id}`)
-      setIsPaid(data.Cafe.verifiedPayment);
-      setUserPlan(data.Cafe.plan);
+      const response = await cafeApi.get(`${process.env.REACT_APP_API_URL}/api/checkPaymentStatus`);
+      console.log(response,'ze')
+      localStorage.setItem('path',`?id=${response.data.Cafe.id}`)
+      setIsPaid(response.data.status==="success"?true:false);
+      setUserPlan(response.data.Cafe.plan);
       setIsLoading(false);
     } catch (error) {
       console.error('Error checking payment:', error);
@@ -293,37 +290,42 @@ export default function ProtectedAdminDashboard() {
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header Section */}
+       {/* Header Section */}
         <div className="mb-16 animate-fadeIn">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-3 rounded-xl shadow-lg shadow-blue-500/50">
-                <LayoutDashboard className="w-8 h-8 text-white" />
+                <LayoutDashboard className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10">
+                  <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/10">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                    <span className="text-emerald-400 text-sm font-medium">System Online</span>
+                    <span className="text-emerald-400 text-xs md:text-sm font-medium">System Online</span>
                   </div>
                 </div>
-                <h1 className="text-5xl font-bold text-white tracking-tight">
+                <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
                   Admin Dashboard
                 </h1>
-                <p className="text-slate-400 mt-2">
+                <p className="text-slate-400 mt-2 text-sm md:text-base">
                   Welcome back! Manage your café operations from one central hub
                 </p>
               </div>
             </div>
 
-            {/* Plan Badge */}
+            {/* Disconnect Button - Now visible on mobile */}
             {userPlan && (
-              <div className="bg-gradient-to-r from-red-600 to-red-600 px-6 py-3 rounded-full shadow-lg">
-                <span 
-                onClick={()=>{
-                  localStorage.clear()
-                  navigate('/login')
-                }}
-                className="text-white cursor-pointer font-semibold">Deconnect</span>
+              <div className="w-full md:w-auto">
+                <button
+                  onClick={()=>{
+                    axios.post(process.env.REACT_APP_API_URL+'/logout')
+                    localStorage.clear()
+                    navigate('/login')
+                  }}
+                  className="w-full md:w-auto bg-gradient-to-r from-red-600 to-red-600 px-6 py-3 rounded-full shadow-lg text-white font-semibold hover:from-red-700 hover:to-red-700 transition-all"
+                >
+                  Disconnect
+                </button>
               </div>
             )}
           </div>

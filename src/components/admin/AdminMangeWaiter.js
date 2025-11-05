@@ -1,15 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Users, Plus, Search, Printer, Edit2, Trash2, Eye, DollarSign, Calendar, ChevronDown, ChevronUp, X, Check, AlertCircle, Loader2, Table2, CheckCircle } from 'lucide-react';
-import api from '../../api/axiosInstance';
-import axios from 'axios';
-import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
 
-import {
-  Box,
-  Button,
- 
-} from '@mui/material';
+import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
 import { useNavigate } from 'react-router-dom';
+import cafeApi from '../../api/cafeApiInstance';
 export default function ManageWaiters() {
   const [waiters, setWaiters] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,9 +31,7 @@ export default function ManageWaiters() {
   const loadWaiters = async () => {
     setIsLoading(true);
     try {
-      const response = await api.get('/get-servers', {
-        headers: { 'x-api-key': localStorage.getItem('token') }
-      });
+      const response = await cafeApi.get('/get-servers');
       setWaiters(response.data);
     } catch (error) {
       console.error('Error loading waiters:', error);
@@ -49,9 +41,7 @@ export default function ManageWaiters() {
 
   const loadAvailableTables = async () => {
     try {
-      const data = await api.get('/getQRCodes', {
-        headers: { 'x-api-key': localStorage.getItem('token') }
-      });
+      const data = await cafeApi.get('/getQRCodes');
       setAvailableTables(data.data);
     } catch (error) {
       console.error('Error loading tables:', error);
@@ -201,11 +191,9 @@ export default function ManageWaiters() {
 const print = async (id) => {
   try {
     // Appel API réel
-    const response = await axios.get(
-      `${process.env.REACT_APP_API_URL}/api/get-daily-of-server/${id}`, 
-      {
-        headers: { 'x-api-key': localStorage.getItem('token') }
-      }
+    const response = await cafeApi.get(
+      `/get-daily-of-server/${id}`, 
+     
     );
     
     const data = response.data;
@@ -225,9 +213,7 @@ const print = async (id) => {
     }
 
     try {
-      await api.post('/add-server', newWaiter, {
-        headers: { 'x-api-key': localStorage.getItem('token') }
-      });
+      await cafeApi.post('/add-server', newWaiter);
       setRefresh(!refresh);
       setShowAddModal(false);
       setNewWaiter({ name: '', password: '', begin: '', end: '' });
@@ -240,9 +226,8 @@ const print = async (id) => {
   const handleUnassign = async (waiterId, tableNumber) => {
     try {
       // Faire l'appel API
-      const res = await api.put('/clear-tables/' + waiterId, 
+      const res = await cafeApi.put('/clear-tables/' + waiterId, 
         { number: tableNumber }, 
-        { headers: { 'x-api-key': localStorage.getItem('token') } }
       );
       
       if (res.data) {
@@ -265,9 +250,7 @@ const print = async (id) => {
     if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce serveur?')) return;
     
     try {
-      const response = await api.delete('/delete-servers/' + id, {
-        headers: { 'x-api-key': localStorage.getItem('token') }
-      });
+      const response = await cafeApi.delete('/delete-servers/' + id);
       if (response.data) {
         setRefresh(!refresh);
       }
@@ -294,9 +277,8 @@ const toggleTableSelection = async (tableNumber) => {
       const table = availableTables.find(t => t.number === tableNumber);
       const isCurrentlySelected = selectedTables.includes(table.id);
       
-      await api.put('/assign-tables/' + tableNumber, 
+      await cafeApi.put('/assign-tables/' + tableNumber, 
         { id: selectedWaiter.id }, 
-        { headers: { 'x-api-key': localStorage.getItem('token') } }
       );
       
       // Mettre à jour l'état local immédiatement
@@ -378,7 +360,7 @@ const toggleTableSelection = async (tableNumber) => {
         className="flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-lg bg-white/10 text-white transition-all duration-200 hover:bg-white/15 hover:scale-105"
       >
         <ArrowLeft size={20} />
-        <span className="hidden sm:inline">Retour</span>
+        <span className="hidden sm:inline">Back</span>
       </button>
       
       <div className="bg-gradient-to-br from-amber-500 to-orange-600 p-3 rounded-xl shadow-lg">

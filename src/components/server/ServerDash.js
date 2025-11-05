@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
+import { ArrowLeft } from 'lucide-react';
 import {
   Box,
   Paper,
@@ -26,7 +26,9 @@ import {
   ToggleButton,
   Badge,
   Pagination,
-  setRef,
+  CircularProgress,
+  Snackbar,
+  Alert,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -56,47 +58,70 @@ function ServerDash() {
   const [currentPage, setCurrentPage] = useState(1);
   const [alerts, setAlerts] = useState([]);
   const [printingOrder, setPrintingOrder] = useState(null);
+  
+  // NEW: Loading states for each order
+  const [loadingOrders, setLoadingOrders] = useState({});
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  
   const ordersPerPage = 10;
   const printRef = useRef();
 
   // Socket.io setup
-  useEffect(() => {
-    const SOCKET_URL = process.env.REACT_APP_WS_URL;
-    const newSocket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      withCredentials: true
-    });
-    newSocket.emit('joinCafe',{cafeId:localStorage.getItem('cafeId')})
-    newSocket.on('newOrder',(data)=>{
-      setNotificationCount(prev=>prev+1)
-      setRefresh((prev) => !prev);
-    })
-    newSocket.on('newAlert',(data)=>{
-      setAlerts([...alerts,data])
-    })
-    newSocket.on("orderStatusUpdated", (data) => {
-    // Update your local state here
-   setOrders(prevOrders => {
-        return prevOrders.map(order => {
-          if (order.id === data.id) {
-            return { ...order, ...data };
-          }
-          return order;
-        });
-      });
-    });
+useEffect(() => {
+  const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
+  const newSocket = io(SOCKET_URL, {
+    transports: ['websocket'], // polling غير ضروري غالبًا
+    reconnection: true,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
+    reconnectionAttempts: Infinity,
+    withCredentials: true,
+    upgrade: true,
+  });
 
-    // Cleanup function to disconnect socket
-    return () => {
+  // Emit joinCafe بعد ما socket يتصل
+  newSocket.on('connect', () => {
+    const cafeId = localStorage.getItem('cafeId');
+    if (cafeId) {
+      newSocket.emit('joinCafe', { cafeId });
+    }
+  });
+
+  // Event listeners
+  const handleNewOrder = (data) => {
+    setNotificationCount(prev => prev + 1);
+    setRefresh(prev => !prev);
+  };
+
+  const handleNewAlert = (data) => {
+    setAlerts(prev => [...prev, data]);
+  };
+
+  const handleOrderStatusUpdated = (data) => {
+    setOrders(prevOrders =>
+      prevOrders.map(order => (order.id === data.id ? { ...order, ...data } : order))
+    );
+  };
+
+  newSocket.on('newOrder', handleNewOrder);
+  newSocket.on('newAlert', handleNewAlert);
+  newSocket.on('orderStatusUpdated', handleOrderStatusUpdated);
+
+  // Cleanup
+  return () => {
+    newSocket.off('newOrder', handleNewOrder);
+    newSocket.off('newAlert', handleNewAlert);
+    newSocket.off('orderStatusUpdated', handleOrderStatusUpdated);
+    if (newSocket.connected || newSocket.connecting) {
       newSocket.disconnect();
-    };
+    }
+  };
+}, []); // empty dependency array
 
-    
-  }, []);
-  const navigate=useNavigate()
+
+  const navigate = useNavigate();
+  
   useEffect(() => {
-
-    
     axios.get(process.env.REACT_APP_API_URL+"/server/getOrders", {
       headers: { 'server-token': localStorage.getItem('serverToken') }
     })
@@ -125,14 +150,13 @@ function ServerDash() {
       setCurrentPage(1);
     })
     .catch((err) => {
-      if (err.response.data){
+      if (err.response?.data){
         navigate('/login')
       }
     });
   }, [refresh, viewMode]);
 
-const handlePrintReceipt = (order) => {
-    // Create a new window for printing
+  const handlePrintReceipt = (order) => {
     const printWindow = window.open('', '', 'width=302,height=600');
     
     const receiptHTML = `
@@ -256,13 +280,23 @@ const handlePrintReceipt = (order) => {
     }
   };
 
-  const handleRowClick = (order) => {
-    setSelectedOrder(order);
-    setOpenDialog(true);
-    if (notificationCount > 0) {
-      setNotificationCount(0);
-    }
-  };
+const handleRowClick = (order) => {
+  // Only allow opening dialog for pending orders
+  if (order.status === 'served' || order.status === 'canceled') {
+    setSnackbar({ 
+      open: true, 
+      message: 'Cannot edit completed orders', 
+      severity: 'warning' 
+    });
+    return;
+  }
+  
+  setSelectedOrder(order);
+  setOpenDialog(true);
+  if (notificationCount > 0) {
+    setNotificationCount(0);
+  }
+};
 
   const handleCloseDialog = () => {
     setSelectedOrder(null);
@@ -285,14 +319,22 @@ const handlePrintReceipt = (order) => {
     .then((r) => {
       setOpenDialog(false);
       setRefresh(!refresh);
-      setShowSuccess(true);
+      setSnackbar({ open: true, message: 'Order updated successfully!', severity: 'success' });
     })
-    .catch((err) => console.log(err));
+    .catch((err) => {
+      console.log(err);
+      setSnackbar({ open: true, message: 'Failed to update order', severity: 'error' });
+    });
     setEditingItem(null);
   };
 
-  const [showPopUp,setShowPopUp]=useState(null)
+  const [showPopUp, setShowPopUp] = useState(null);
+  
+  // UPDATED: Modified updateOrderStatus with loading states
   const updateOrderStatus = (id, upd, tableId) => {
+    // Set loading state for this specific order
+    setLoadingOrders(prev => ({ ...prev, [id]: upd }));
+    
     axios.put(process.env.REACT_APP_API_URL+'/server/updateOrderStatus/' + id, {
       status: upd,
       tableId
@@ -300,12 +342,33 @@ const handlePrintReceipt = (order) => {
       headers: { 'server-token': localStorage.getItem('serverToken') }
     })
     .then((r) => {
-      setShowSuccess(true);
+      // Remove loading state
+      setLoadingOrders(prev => {
+        const newState = { ...prev };
+        delete newState[id];
+        return newState;
+      });
+      
+      // Show success notification
+      const message = upd === 'served' ? 'Order marked as served!' : 'Order canceled successfully!';
+      setSnackbar({ open: true, message, severity: 'success' });
+      
       setTimeout(() => {
         setRefresh(!refresh);
-      }, 1000);
+      }, 500);
     })
-    .catch((err) => setShowPopUp(err.response.data.error));
+    .catch((err) => {
+      // Remove loading state
+      setLoadingOrders(prev => {
+        const newState = { ...prev };
+        delete newState[id];
+        return newState;
+      });
+      
+      // Show error
+      setShowPopUp(err.response?.data?.error || 'Failed to update order status');
+      setSnackbar({ open: true, message: 'Failed to update order', severity: 'error' });
+    });
   };
 
   const getStatusChip = (status) => {
@@ -340,128 +403,127 @@ const handlePrintReceipt = (order) => {
   return (
     <>
       <Box className="orders-container" sx={{ display: printingOrder ? 'none' : 'block' }}>
-       <Paper 
-  className="header-paper" 
-  elevation={0} 
-  style={{
-    background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-    position: "relative",
-    paddingTop: "60px"
-  }}
->
-  <Button
-    onClick={() => window.history.back()}
-    startIcon={<ArrowLeft size={20} />}
-    sx={{
-      position: "absolute",
-      top: 16,
-      left: 16,
-      backdropFilter: "blur(10px)",
-      backgroundColor: "rgba(255, 255, 255, 0.1)",
-      color: "white",
-      borderRadius: "50px",
-      px: 2,
-      py: 1,
-      textTransform: "none",
-      transition: "transform 0.2s",
-      zIndex: 10,
-      "&:hover": {
-        backgroundColor: "rgba(255, 255, 255, 0.15)",
-        transform: "scale(1.05)",
-      },
-      "& .MuiButton-startIcon": {
-        marginRight: { xs: 0, sm: 1 },
-      },
-    }}
-  >
-    
-    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-      Back
-    </Box>
-  </Button>
-  <Button
-    onClick={() => {
-      localStorage.clear()
-      window.history.back()}}
-    startIcon={<ArrowLeft size={20} />}
-    sx={{
-      position: "absolute",
-      top: 16,
-      right: 16,
-      backdropFilter: "blur(10px)",
-      backgroundColor: "red",
-      color: "white",
-      borderRadius: "50px",
-      px: 2,
-      py: 1,
-      textTransform: "none",
-      transition: "transform 0.2s",
-      zIndex: 10,
-      "&:hover": {
-        backgroundColor: "rgba(255, 255, 255, 0.15)",
-        transform: "scale(1.05)",
-      },
-      "& .MuiButton-startIcon": {
-        marginRight: { xs: 0, sm: 1 },
-      },
-    }}
-  >
-    
-    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-      Deconnect
-    </Box>
-  </Button>
-
-  <Box className="header-content">
-    <Box>
-      <Typography variant="h4" className="header-title">
-        Orders Management
-      </Typography>
-      <Typography variant="subtitle1" className="header-subtitle">
-        Manage your café orders efficiently
-      </Typography>
-    </Box>
-    <Badge 
-      badgeContent={notificationCount} 
-      color="error"
-      className="notification-badge"
-      max={99}
-    >
-      <IconButton className="notification-icon">
-        <NotificationsIcon sx={{ fontSize: 32, color: '#f1f5f9' }} />
-      </IconButton>
-    </Badge>
-  </Box>
-</Paper>
-       {alerts.length!==0&&alerts.map((e, i) => (
-  <div 
-    key={i}
-    className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-3 rounded-r-lg shadow-sm"
-  >
-    <div className="flex items-start">
-      <div className="flex-shrink-0">
-        <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-        </svg>
-      </div>
-      <div className="ml-3 flex-1">
-        <p className="text-sm text-amber-800">
-          Item <span className="font-semibold">{e.name}</span> will end - il vous reste que {e.stock} en stock.{' '}
-          <a 
-            href="/admin/items" 
-            className="underline font-medium hover:text-amber-900 transition-colors"
+        <Paper 
+          className="header-paper" 
+          elevation={0} 
+          style={{
+            background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
+            position: "relative",
+            paddingTop: "60px"
+          }}
+        >
+          <Button
+            onClick={() => window.history.back()}
+            startIcon={<ArrowLeft size={20} />}
+            sx={{
+              position: "absolute",
+              top: 16,
+              left: 16,
+              backdropFilter: "blur(10px)",
+              backgroundColor: "rgba(255, 255, 255, 0.1)",
+              color: "white",
+              borderRadius: "50px",
+              px: 2,
+              py: 1,
+              textTransform: "none",
+              transition: "transform 0.2s",
+              zIndex: 10,
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                transform: "scale(1.05)",
+              },
+              "& .MuiButton-startIcon": {
+                marginRight: { xs: 0, sm: 1 },
+              },
+            }}
           >
-            Update it now
-          </a>
-        </p>
-      </div>
-    </div>
-  </div>
-))}
-         {showPopUp && (
-        <>
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              Back
+            </Box>
+          </Button>
+          
+          <Button
+            onClick={() => {
+              localStorage.clear()
+              window.history.back()
+            }}
+            startIcon={<ArrowLeft size={20} />}
+            sx={{
+              position: "absolute",
+              top: 16,
+              right: 16,
+              backdropFilter: "blur(10px)",
+              backgroundColor: "red",
+              color: "white",
+              borderRadius: "50px",
+              px: 2,
+              py: 1,
+              textTransform: "none",
+              transition: "transform 0.2s",
+              zIndex: 10,
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                transform: "scale(1.05)",
+              },
+              "& .MuiButton-startIcon": {
+                marginRight: { xs: 0, sm: 1 },
+              },
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              Disconnect
+            </Box>
+          </Button>
 
-          {/* Popup box */}
+          <Box className="header-content">
+            <Box>
+              <Typography variant="h4" className="header-title">
+                Orders Management
+              </Typography>
+              <Typography variant="subtitle1" className="header-subtitle">
+                Manage your café orders efficiently
+              </Typography>
+            </Box>
+            <Badge 
+              badgeContent={notificationCount} 
+              color="error"
+              className="notification-badge"
+              max={99}
+            >
+              <IconButton className="notification-icon">
+                <NotificationsIcon sx={{ fontSize: 32, color: '#f1f5f9' }} />
+              </IconButton>
+            </Badge>
+          </Box>
+        </Paper>
+
+        {alerts.length !== 0 && alerts.map((e, i) => (
+          <div 
+            key={i}
+            className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-3 rounded-r-lg shadow-sm"
+          >
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm text-amber-800">
+                  Item <span className="font-semibold">{e.name}</span> will end - You only have {e.stock} left in stock.{' '}
+                  <a 
+                    href="/admin/items" 
+                    className="underline font-medium hover:text-amber-900 transition-colors"
+                  >
+                    Update it now
+                  </a>
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {showPopUp && (
           <div className="absolute inset-0 flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90%] max-w-md text-center">
               <h2 className="text-xl font-semibold mb-3">Notification</h2>
@@ -476,9 +538,7 @@ const handlePrintReceipt = (order) => {
               </button>
             </div>
           </div>
-        </>
-      )}
-        {/* {showSuccess && <SuccessMessage setShowSuccess={setShowSuccess} />} */}
+        )}
 
         <Box className="toggle-container">
           <ToggleButtonGroup
@@ -525,35 +585,41 @@ const handlePrintReceipt = (order) => {
                 ) : (
                   currentOrders.map((order) => (
                     <TableRow key={order.id} className="table-row">
-                      {console.log('first',order)}
                       <TableCell className="table-cell table-number">
                         {order.Table.number}
                       </TableCell>
-                      <TableCell
-                        className="table-cell items-cell"
-                        onClick={() => handleRowClick(order.OrderItems)}
-                      >
-                        {order.OrderItems.map((item, index) => (
-                          <div key={index} className="item-line">
-                            <span className="item-quantity">{item.quantity}x</span>{' '}
-                            {item.Item.name}
-                          </div>
-                        ))}
-                      </TableCell>
+                    <TableCell
+  className="table-cell items-cell"
+  onClick={() => handleRowClick(order)} // Changed from order.OrderItems
+>
+  {order.OrderItems.map((item, index) => (
+    <div key={index} className="item-line">
+      <span className="item-quantity">{item.quantity}x</span>{' '}
+      {item.Item.name}
+    </div>
+  ))}
+</TableCell>
                       <TableCell className="table-cell price-cell">
                         {order.totalPrice.toFixed(2)} TnD
                       </TableCell>
-               <TableCell className="table-cell status-cell">
-                {console.log(order,"ee")}
+                      <TableCell className="table-cell status-cell">
                         {viewMode === 'pending' ? (
-                          <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
                                 updateOrderStatus(order.id, 'served', order.Table.number);
                               }}
-                              className="bg-green-600 rounded-2xl hover:bg-green-700 text-white font-semibold py-2 px-3 transition"
+                              disabled={!!loadingOrders[order.id]}
+                              className={`${
+                                loadingOrders[order.id] === 'served'
+                                  ? 'bg-gray-400 cursor-not-allowed'
+                                  : 'bg-green-600 hover:bg-green-700'
+                              } rounded-2xl text-white font-semibold py-2 px-3 transition flex items-center gap-2`}
                             >
+                              {loadingOrders[order.id] === 'served' && (
+                                <CircularProgress size={16} sx={{ color: 'white' }} />
+                              )}
                               Served
                             </button>
                             <button 
@@ -561,8 +627,16 @@ const handlePrintReceipt = (order) => {
                                 e.stopPropagation();
                                 updateOrderStatus(order.id, 'canceled', order.Table.number);
                               }}
-                              className="bg-red-600 rounded-2xl hover:bg-red-700 text-white font-semibold py-2 px-3 transition"
+                              disabled={!!loadingOrders[order.id]}
+                              className={`${
+                                loadingOrders[order.id] === 'canceled'
+                                  ? 'bg-gray-400 cursor-not-allowed'
+                                  : 'bg-red-600 hover:bg-red-700'
+                              } rounded-2xl text-white font-semibold py-2 px-3 transition flex items-center gap-2`}
                             >
+                              {loadingOrders[order.id] === 'canceled' && (
+                                <CircularProgress size={16} sx={{ color: 'white' }} />
+                              )}
                               Cancel
                             </button>
                           </Box>
@@ -604,174 +678,93 @@ const handlePrintReceipt = (order) => {
           )}
         </Paper>
 
-        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-          {selectedOrder && (
-            <>
-              <DialogTitle className="dialog-title">Order Details</DialogTitle>
-              <DialogContent className="dialog-content">
-                <List>
-                  {selectedOrder.map((item) => (
-                    <ListItem key={item.id} className="dialog-item">
-                      {editingItem?.id === item.id ? (
-                        <>
-                          <ListItemText
-                            primary={item.Item.name}
-                            secondary={`${item.price.toFixed(2)} TnD each`}
-                          />
-                          <Box className="edit-box">
-                            <TextField
-                              type="number"
-                              value={itemQuantity}
-                              onChange={(e) => setItemQuantity(e.target.value)}
-                              size="small"
-                              inputProps={{ min: 1 }}
-                              className="quantity-input"
-                            />
-                            <Button
-                              variant="contained"
-                              onClick={handleUpdateQuantity}
-                              className="update-button"
-                            >
-                              Update
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              onClick={() => setEditingItem(null)}
-                              className="cancel-button"
-                            >
-                              Cancel
-                            </Button>
-                          </Box>
-                        </>
-                      ) : (
-                        <>
-                          <ListItemText
-                            primary={`${item.quantity}x ${item.Item.name}`}
-                            secondary={`${(item.quantity * item.price).toFixed(2)} TnD`}
-                            className="item-text"
-                          />
-                          <ListItemSecondaryAction>
-                            <IconButton
-                              edge="end"
-                              onClick={() => handleEditItem(item)}
-                              className="action-button edit-icon"
-                            >
-                              <EditIcon />
-                            </IconButton>
-                           
-                          </ListItemSecondaryAction>
-                        </>
-                      )}
-                    </ListItem>
-                  ))}
-                </List>
-              </DialogContent>
-              <DialogActions className="dialog-actions">
-                <Button onClick={handleCloseDialog} className="close-button">
-                  Close
-                </Button>
-              </DialogActions>
-            </>
-          )}
-        </Dialog>
-
-        
-      </Box>
-      {/* Print Receipt */}
-      {printingOrder && (
-        <Box 
-        ref={printRef}
-        sx={{
-          display: 'block',
-          width: '80mm',
-          margin: '0 auto',
-          padding: '10mm',
-          fontFamily: 'monospace',
-          '@media print': {
-            padding: 0,
-            margin: 0,
-          }
-        }}
+        {/* Snackbar for notifications */}
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
         >
-         
-          <Box sx={{ textAlign: 'center', borderBottom: '2px dashed #000', pb: 2, mb: 2 }}>
-            <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 1 }}>
-              CASH RECEIPT
-            </Typography>
-            <Typography variant="body2">Café Management</Typography>
-            <Typography variant="body2">Date: {new Date().toLocaleDateString()}</Typography>
-            <Typography variant="body2">Time: {new Date().toLocaleTimeString()}</Typography>
-          </Box>
+          <Alert
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
 
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-              Table: {printingOrder.Table.number}
-            </Typography>
-            <Typography variant="body2">
-              Order #{printingOrder.id}
-            </Typography>
-          </Box>
-
-          <Box sx={{ borderBottom: '1px dashed #000', pb: 2, mb: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-              Description
-            </Typography>
-            {printingOrder.OrderItems.map((item, index) => (
-              <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                <Typography variant="body2">
-                  {item.quantity}x {item.Item.name}
-                </Typography>
-                <Typography variant="body2">
-                  {(item.quantity * item.price).toFixed(2)} TnD
-                </Typography>
-              </Box>
-            ))}
-          </Box>
-
-          <Box sx={{ borderBottom: '2px dashed #000', pb: 2, mb: 2 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                Total
-              </Typography>
-              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                {printingOrder.totalPrice.toFixed(2)} TnD
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box sx={{ textAlign: 'center', mt: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-              THANK YOU!
-            </Typography>
-            <Typography variant="caption">
-              Visit us again
-            </Typography>
-          </Box>
-
-          <style>
-            {`
-              @media print {
-                body * {
-                  visibility: hidden;
-                }
-                #print-receipt, #print-receipt * {
-                  visibility: visible;
-                }
-                #print-receipt {
-                  position: absolute;
-                  left: 0;
-                  top: 0;
-                  width: 80mm;
-                }
-                @page {
-                  size: 80mm auto;
-                  margin: 0;
-                }
-              }
-            `}
-          </style>
-        </Box>
-      )}
+        {/* Dialog remains the same */}
+      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+  {selectedOrder && (
+    <>
+      <DialogTitle className="dialog-title">Order Details</DialogTitle>
+      <DialogContent className="dialog-content">
+        <List>
+          {selectedOrder.OrderItems.map((item) => ( // Changed from selectedOrder.map
+            <ListItem key={item.id} className="dialog-item">
+              {editingItem?.id === item.id ? (
+                <>
+                  <ListItemText
+                    primary={item.Item.name}
+                    secondary={`${item.price.toFixed(2)} TnD each`}
+                  />
+                  <Box className="edit-box">
+                    <TextField
+                      type="number"
+                      value={itemQuantity}
+                      onChange={(e) => setItemQuantity(e.target.value)}
+                      size="small"
+                      inputProps={{ min: 1 }}
+                      className="quantity-input"
+                    />
+                    <Button
+                      variant="contained"
+                      onClick={handleUpdateQuantity}
+                      className="update-button"
+                    >
+                      Update
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => setEditingItem(null)}
+                      className="cancel-button"
+                    >
+                      Cancel
+                    </Button>
+                  </Box>
+                </>
+              ) : (
+                <>
+                  <ListItemText
+                    primary={`${item.quantity}x ${item.Item.name}`}
+                    secondary={`${(item.quantity * item.price).toFixed(2)} TnD`}
+                    className="item-text"
+                  />
+                  <ListItemSecondaryAction>
+                    <IconButton
+                      edge="end"
+                      onClick={() => handleEditItem(item)}
+                      className="action-button edit-icon"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                  </ListItemSecondaryAction>
+                </>
+              )}
+            </ListItem>
+          ))}
+        </List>
+      </DialogContent>
+      <DialogActions className="dialog-actions">
+        <Button onClick={handleCloseDialog} className="close-button">
+          Close
+        </Button>
+      </DialogActions>
+    </>
+  )}
+</Dialog>
+      </Box>
     </>
   );
 }

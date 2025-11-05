@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Coffee, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { setAccessToken } from '../../api/cafeApiInstance';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
+  const [loginError, setLoginError] = useState('');
   const [errors, setErrors] = useState({});
   const navigate=useNavigate()
   const [formData, setFormData] = useState({
@@ -24,21 +26,25 @@ export default function LoginPage() {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+    // Clear login error when user starts typing
+    if (loginError) {
+      setLoginError('');
+    }
   };
 
   const validateForm = () => {
     const newErrors = {};
 
     if (!formData.email.trim()) {
-      newErrors.email = 'Email requis';
+      newErrors.email = 'Email required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Email invalide';
+      newErrors.email = 'Invalid email';
     }
 
     if (!formData.password) {
-      newErrors.password = 'Mot de passe requis';
+      newErrors.password = 'Password required';
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Minimum 6 caractères';
+      newErrors.password = 'Minimum 6 characters';
     }
 
     setErrors(newErrors);
@@ -49,22 +55,42 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (!validateForm()) return;
+    
+    setIsLoading(true);
+    setLoginError('');
+    
     axios.post(`${process.env.REACT_APP_API_URL}/login`,formData)
     .then(r=>{
-      localStorage.setItem('token',r.data.apiKey)
-      setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+      setAccessToken(r.data.accessToken)
       setIsLoading(false);
       setLoginSuccess(true);
       
       setTimeout(() => {
         navigate('/admin')
       }, 2000);
-    }, 1500);
     })
-    .catch(err=>console.log(err))
+    .catch(err=>{
+      console.log(err);
+      setIsLoading(false);
+      
+      // Handle different error types
+      if (err.response) {
+        // Server responded with error status
+        if (err.response.status === 401 || err.response.status === 400) {
+          setLoginError('Incorrect email or password. Please try again.');
+        } else if (err.response.status === 404) {
+          setLoginError('Account not found. Please check your email.');
+        } else {
+          setLoginError('Login failed. Please try again later.');
+        }
+      } else if (err.request) {
+        // Request made but no response
+        setLoginError('Cannot connect to server. Please check your internet connection.');
+      } else {
+        // Other errors
+        setLoginError('An unexpected error occurred. Please try again.');
+      }
+    })
   };
 
   if (loginSuccess) {
@@ -74,12 +100,12 @@ export default function LoginPage() {
           <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
             <CheckCircle2 size={48} />
           </div>
-          <h3 className="text-3xl font-bold mb-4 gradient-text">Connexion réussie ! 🎉</h3>
+          <h3 className="text-3xl font-bold mb-4 gradient-text">Login Successful! 🎉</h3>
           <p className="text-xl text-gray-400 mb-6">
-            Bienvenue sur CoffAI
+            Welcome to CoffAI
           </p>
           <p className="text-gray-500">
-            Redirection vers votre dashboard...
+            Redirecting to your dashboard...
           </p>
           <div className="mt-6">
             <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
@@ -172,7 +198,7 @@ export default function LoginPage() {
       <div className="fixed top-6 left-6 z-50">
         <button onClick={() => window.history.back()} className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition">
           <ArrowLeft size={20} />
-          <span className="hidden sm:inline">Retour</span>
+          <span className="hidden sm:inline">Back</span>
         </button>
       </div>
 
@@ -184,14 +210,24 @@ export default function LoginPage() {
               <span className="gradient-text">CoffAI</span>
             </div>
             <h1 className="text-3xl font-bold mb-2">
-              Bon retour !
+              Welcome Back!
             </h1>
             <p className="text-gray-400">
-              Connectez-vous à votre dashboard
+              Log in to your dashboard
             </p>
           </div>
 
           <div className="glass rounded-3xl p-8 mb-6">
+            {loginError && (
+              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/50 flex items-start gap-3">
+                <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="text-red-400 font-semibold mb-1">Login Failed</p>
+                  <p className="text-red-300 text-sm">{loginError}</p>
+                </div>
+              </div>
+            )}
+
             <div className="mb-4">
               <label className="block text-sm font-semibold mb-2 text-gray-300">
                 Email <span className="text-red-400">*</span>
@@ -203,7 +239,7 @@ export default function LoginPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="votreemail@example.com"
+                  placeholder="youremail@example.com"
                   className={`w-full pl-12 pr-4 py-3 rounded-xl bg-white/5 border ${
                     errors.email ? 'border-red-500' : 'border-white/10'
                   } text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition`}
@@ -218,7 +254,7 @@ export default function LoginPage() {
 
             <div className="mb-4">
               <label className="block text-sm font-semibold mb-2 text-gray-300">
-                Mot de passe <span className="text-red-400">*</span>
+                Password <span className="text-red-400">*</span>
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -253,30 +289,32 @@ export default function LoginPage() {
               type="button"
               onClick={handleSubmit}
               disabled={isLoading}
-              className={`w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-4 rounded-xl text-lg font-semibold transition ${
-                isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.02] glow-btn'
+              className={`w-full px-6 py-4 rounded-xl text-lg font-semibold transition ${
+                isLoading 
+                  ? 'bg-gray-600 cursor-not-allowed' 
+                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:scale-[1.02] glow-btn'
               }`}
             >
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Connexion...
+                  Logging in...
                 </span>
               ) : (
-                <span>Se connecter</span>
+                <span>Log In</span>
               )}
             </button>
           </div>
 
           <div className="text-center glass rounded-2xl p-4">
             <p className="text-gray-400">
-              Vous n'avez pas de compte ?
+              Don't have an account?
               {' '}
               <button
                 onClick={() => navigate('/#form')}
                 className="text-blue-400 hover:text-blue-300 font-semibold transition"
               >
-                S'inscrire
+                Sign up
               </button>
             </p>
           </div>

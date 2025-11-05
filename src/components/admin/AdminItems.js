@@ -39,8 +39,7 @@ import SmokingRoomsIcon from '@mui/icons-material/SmokingRooms';
 import CasinoIcon from '@mui/icons-material/Casino';
 import SuccessMessage from './SuccessAlert';
 import './AdminItems.css';
-import api from '../../api/axiosInstance';
-import axios from 'axios';
+import cafeApi from '../../api/cafeApiInstance';
 
 function AdminItems() {
   const [products, setProducts] = useState([]);
@@ -211,8 +210,8 @@ function AdminItems() {
   });
 
   useEffect(() => {
-    api
-      .get('/getItems', { headers: { 'x-api-key': localStorage.getItem('token') } })
+    cafeApi
+      .get('/getItems')
       .then((r) => {
         setProducts(r.data);
         setFilteredProducts(r.data);
@@ -319,13 +318,12 @@ function AdminItems() {
     uploadFormData.append('image', selectedFile);
 
     try {
-      const response = await axios.post(
-        process.env.REACT_APP_API_URL+'/api/upload-image',
+      const response = await cafeApi.post(
+        '/upload-image',
         uploadFormData,
         {
           headers: {
             'Content-Type': 'multipart/form-data',
-            'x-api-key': localStorage.getItem('token'),
           },
           onUploadProgress: (progressEvent) => {
             const progress = Math.round(
@@ -360,13 +358,9 @@ function AdminItems() {
       };
 
       if (currentProduct) {
-        await api.put(`/updateItem/${currentProduct.id}`, dataToSubmit, {
-          headers: { 'x-api-key': localStorage.getItem('token') },
-        });
+        await cafeApi.put(`/updateItem/${currentProduct.id}`, dataToSubmit);
       } else {
-        await api.post('/addItem', dataToSubmit, {
-          headers: { 'x-api-key': localStorage.getItem('token') },
-        });
+        await cafeApi.post('/addItem', dataToSubmit);
       }
 
       setShowSuccess(true);
@@ -384,10 +378,8 @@ function AdminItems() {
   };
 
   const handleConfirmDelete = () => {
-    api
-      .delete(`/deleteItem/${productToDelete.id}`, {
-        headers: { 'x-api-key': localStorage.getItem('token') },
-      })
+    cafeApi
+      .delete(`/deleteItem/${productToDelete.id}`)
       .then((r) => {
         setShowSuccess(true);
         setRefresh(!refresh);
@@ -434,35 +426,35 @@ function AdminItems() {
         }}
         elevation={0}
       >
-        <Button
-          onClick={() => window.history.back()}
-          startIcon={<ArrowLeft size={20} />}
-          sx={{
-            position: 'absolute',
-            top: 16,
-            left: 16,
-            backdropFilter: 'blur(10px)',
-            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-            color: 'white',
-            borderRadius: '50px',
-            px: 2,
-            py: 1,
-            textTransform: 'none',
-            transition: 'transform 0.2s',
-            zIndex: 10,
-            '&:hover': {
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              transform: 'scale(1.05)',
-            },
-            '& .MuiButton-startIcon': {
-              marginRight: { xs: 0, sm: 1 },
-            },
-          }}
-        >
-          <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-            Retour
-          </Box>
-        </Button>
+       <Button
+    onClick={() => window.history.back()}
+    startIcon={<ArrowLeft size={20} />}
+    sx={{
+      position: "absolute",
+      top: 16,
+      left: 16,
+      backdropFilter: "blur(10px)",
+      backgroundColor: "rgba(255, 255, 255, 0.1)",
+      color: "white",
+      borderRadius: "50px",
+      px: 2,
+      py: 1,
+      textTransform: "none",
+      transition: "transform 0.2s",
+      zIndex: 10,
+      "&:hover": {
+        backgroundColor: "rgba(255, 255, 255, 0.15)",
+        transform: "scale(1.05)",
+      },
+      "& .MuiButton-startIcon": {
+        marginRight: { xs: 0, sm: 1 },
+      },
+    }}
+  >
+    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+      Back
+    </Box>
+  </Button>
 
         <Typography variant="h4" className="products-title">
           Products Management

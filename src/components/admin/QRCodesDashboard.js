@@ -1,16 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
-import api from '../../api/axiosInstance';
+import cafeApi from '../../api/cafeApiInstance';
 
 export default function QRCodesDashboard() {
   const [tables, setTables] = useState([]);
   const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
-    api.get(`/getQRCodes`, {
-      headers: { "x-api-key": `${localStorage.getItem('token')}` }
-    })
+    cafeApi.get(`/getQRCodes`,)
     .then(res => {setTables(res.data);console.log(res.data)})
     .catch(err => console.error(err));
   }, []);
@@ -21,16 +18,14 @@ export default function QRCodesDashboard() {
     try {
       console.log('🔄 Début du téléchargement...');
 
-      const response = await axios({
-        url: `${process.env.REACT_APP_API_URL}/api/downloadQRCodesPDF`,
-        method: 'GET',
-        responseType: 'blob',
-        timeout: 30000,
-        headers: {
-          'Accept': 'application/pdf',
-          "x-api-key":localStorage.getItem('token')
-        }
-      });
+      const response = await cafeApi.get(
+         `/downloadQRCodesPDF`,
+         {
+           headers: {
+             'Accept': 'application/pdf',
+           }
+
+         });
 
       // Vérifier que c'est bien un PDF
       if (!response.data.type.includes('pdf') && response.data.type !== 'application/octet-stream') {
@@ -76,7 +71,7 @@ export default function QRCodesDashboard() {
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-center mb-8">QR Codes des Tables</h1>
+      <h1 className="text-3xl font-bold text-center mb-8">QR Codes for Tables</h1>
       
       {/* Fixed header with back button and download button */}
       <div className="fixed top-6 left-6 right-6 z-50 flex justify-between items-center">
@@ -85,7 +80,7 @@ export default function QRCodesDashboard() {
           className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition bg-white shadow-md"
         >
           <ArrowLeft size={20} />
-          <span className="hidden sm:inline">Retour</span>
+          <span className="hidden sm:inline">Back</span>
         </button>
 
         <button
@@ -100,10 +95,10 @@ export default function QRCodesDashboard() {
           {isDownloading ? (
             <>
               <Loader2 size={20} className="animate-spin" />
-              <span>Téléchargement...</span>
+              <span>Downloading...</span>
             </>
           ) : (
-            <span>Télécharger PDF</span>
+            <span>Download PDF</span>
           )}
         </button>
       </div>

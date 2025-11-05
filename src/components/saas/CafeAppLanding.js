@@ -2,8 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Coffee, Zap, TrendingUp, QrCode, Check, Star, ChevronRight, Menu, X, Play } from 'lucide-react';
 import RegistrationForm from './RegistrationForm';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-
+import { CreditCard, UserPlus } from 'lucide-react';
 // Mock RegistrationForm component since the original isn't provided
 
 
@@ -107,12 +106,12 @@ export default function CafeAppLanding() {
           </div>
           
           <div className="hidden md:flex items-center gap-8">
-            <button onClick={() => scrollToSection(featuresRef)} className="hover:text-blue-400 transition">Comment ça marche</button>
-            <button onClick={() => scrollToSection(pricingRef)} className="hover:text-blue-400 transition">Tarifs</button>
+            <button onClick={() => scrollToSection(featuresRef)} className="hover:text-blue-400 transition">How It Works</button>
+            <button onClick={() => scrollToSection(pricingRef)} className="hover:text-blue-400 transition">Pricing</button>
             <button 
             onClick={()=>navigate('/login')}
             className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2 rounded-full hover:scale-105 transition font-semibold">
-              Essai Gratuit
+              Free Trial
             </button>
           </div>
 
@@ -124,10 +123,10 @@ export default function CafeAppLanding() {
         {isMenuOpen && (
           <div className="md:hidden glass border-t border-white/10">
             <div className="px-6 py-4 space-y-4">
-              <button onClick={() => scrollToSection(featuresRef)} className="block w-full text-left">Comment ça marche</button>
-              <button onClick={() => scrollToSection(pricingRef)} className="block w-full text-left">Tarifs</button>
+              <button onClick={() => scrollToSection(featuresRef)} className="block w-full text-left">How It Works</button>
+              <button onClick={() => scrollToSection(pricingRef)} className="block w-full text-left">Pricing</button>
               <button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2 rounded-full">
-                Essai Gratuit
+                Free Trial
               </button>
             </div>
           </div>
@@ -143,17 +142,17 @@ export default function CafeAppLanding() {
 
         <div className="max-w-6xl mx-auto text-center relative z-10">
           <div className="inline-block glass px-4 py-2 mt-4 rounded-full mb-6 animate-bounce">
-            <span className="text-blue-400">⚡ La révolution digitale des cafés</span>
+            <span className="text-blue-400">⚡ The digital revolution for cafes</span>
           </div>
           
           <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            Transformez votre café avec <br />
+            Transform your cafe with <br />
             <span className="gradient-text">CoffAI</span>
           </h1>
           
           <p className="text-xl md:text-2xl text-gray-300 mb-12 max-w-3xl mx-auto">
-            Menu QR intelligent • Dashboard temps réel • Commandes instantanées<br/>
-            Gérez votre café comme jamais auparavant 
+            Smart QR menu • Real-time dashboard • Instant orders<br/>
+            Manage your cafe like never before 
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
@@ -163,13 +162,13 @@ export default function CafeAppLanding() {
                   formSection?.scrollIntoView({ behavior: 'smooth' });
                 }}
             className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition glow-btn flex items-center gap-2">
-              Commencer Gratuitement <ChevronRight />
+              Start Free <ChevronRight />
             </button>
             <button 
               onClick={() => setIsVideoOpen(true)}
               className="glass px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition flex items-center gap-2"
             >
-              <Play size={20} /> Voir la démo
+              <Play size={20} /> Watch Demo
             </button>
           </div>
 
@@ -188,36 +187,39 @@ export default function CafeAppLanding() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20 reveal">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Comment ça marche ? <span className="gradient-text">Trop simple.</span>
+              How does it work? <span className="gradient-text">Too simple.</span>
             </h2>
-            <p className="text-xl text-gray-400">En 3 étapes, votre café devient digital</p>
+            <p className="text-xl text-gray-400">In 3 steps, your cafe becomes digital</p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              { icon: QrCode, title: '1. Scanner le QR', desc: 'Le client scanne le code QR et accède au menu interactif', color: 'from-blue-600 to-cyan-600' },
-              { icon: Coffee, title: '2. Commander', desc: 'Il passe sa commande directement, avec options et personnalisations', color: 'from-cyan-600 to-teal-600' },
-              { icon: Zap, title: '3. Préparation', desc: 'Le serveur reçoit une notification et prépare la commande rapidement', color: 'from-blue-600 to-indigo-600' }
-            ].map((item, i) => (
-              <div key={i} className="reveal glass rounded-3xl p-8 hover:scale-105 transition duration-300">
-                <div className={`w-16 h-16 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mb-6`}>
-                  <item.icon size={32} />
-                </div>
-                <h3 className="text-2xl font-bold mb-4">{item.title}</h3>
-                <p className="text-gray-400">{item.desc}</p>
-              </div>
-            ))}
-          </div>
+     <div className="grid md:grid-cols-3 gap-8">
+  {[
+    { icon: CreditCard, title: '1. Select Plan', desc: 'Choose the perfect plan for your cafe and start your 14-day free trial', color: 'from-blue-600 to-cyan-600' },
+    { icon: UserPlus, title: '2. Join Us', desc: 'Complete registration and get instant access to your dashboard', color: 'from-cyan-600 to-teal-600' },
+    { icon: QrCode, title: '3. Start Working', desc: 'Print your QR codes, place them on tables, and start receiving orders', color: 'from-teal-600 to-green-600' }
+  ].map((item, i) => (
+    <div key={i} className="reveal glass rounded-3xl p-8 hover:scale-105 transition duration-300">
+      <div className={`w-16 h-16 bg-gradient-to-br ${item.color} rounded-2xl flex items-center justify-center mb-6`}>
+        <item.icon size={32} />
+      </div>
+      <h3 className="text-2xl font-bold mb-4">{item.title}</h3>
+      <p className="text-gray-400">{item.desc}</p>
+    </div>
+  ))}
+</div>
+
+          {/* Trial Info */}
+       
 
           <div className="mt-20 reveal">
             <div className="glass rounded-3xl p-12">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div>
                   <h3 className="text-3xl font-bold mb-6">
-                    Dashboard <span className="gradient-text">intelligent</span>
+                    <span className="gradient-text">Intelligent</span> Dashboard
                   </h3>
                   <ul className="space-y-4">
-                    {['Statistiques en temps réel', 'Gestion des commandes', 'Analyse des ventes', 'Rapports automatiques'].map((item, i) => (
+                    {['Real-time statistics', 'Order management', 'Sales analysis', 'Automatic reports'].map((item, i) => (
                       <li key={i} className="flex items-center gap-3">
                         <Check className="text-green-400" size={24} />
                         <span className="text-lg">{item}</span>
@@ -247,35 +249,35 @@ export default function CafeAppLanding() {
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-20 reveal">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Pourquoi <span className="gradient-text">choisir CoffAI ?</span>
+              Why <span className="gradient-text">choose CoffAI?</span>
             </h2>
-            <p className="text-xl text-gray-400">Des milliers de cafés nous font confiance</p>
+            <p className="text-xl text-gray-400">Thousands of cafes trust us</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               { 
                 icon: Zap, 
-                title: 'Installation en 1 minute', 
-                desc: 'Configurez votre café digital en moins de 60 secondes. Aucune compétence technique requise.',
+                title: '1 minute setup', 
+                desc: 'Set up your digital cafe in less than 60 seconds. No technical skills required.',
                 stat: '< 1 min'
               },
               { 
                 icon: Coffee, 
-                title: 'Facile à utiliser', 
-                desc: 'Interface intuitive pour vous et vos clients. Formation incluse gratuitement.',
+                title: 'Easy to use', 
+                desc: 'Intuitive interface for you and your customers. Free training included.',
                 stat: '5/5'
               },
               { 
                 icon: Star, 
-                title: '20+ cafés nous font confiance', 
-                desc: 'Rejoignez les cafés qui ont déjà transformé leur service avec CoffAI.',
+                title: '20+ cafes trust us', 
+                desc: 'Join the cafes that have already transformed their service with CoffAI.',
                 stat: '20+'
               },
               { 
                 icon: Check, 
-                title: 'Zéro installation', 
-                desc: 'Aucun logiciel à installer. Tout fonctionne directement depuis votre navigateur.',
+                title: 'Zero installation', 
+                desc: 'No software to install. Everything works directly from your browser.',
                 stat: '100% Cloud'
               }
             ].map((item, i) => (
@@ -295,17 +297,17 @@ export default function CafeAppLanding() {
               <div className="flex flex-wrap items-center justify-center gap-8">
                 <div className="text-center">
                   <div className="text-4xl font-bold gradient-text mb-2">1000+</div>
-                  <div className="text-gray-400">Commandes traitées</div>
+                  <div className="text-gray-400">Orders processed</div>
                 </div>
                 <div className="hidden md:block w-px h-16 bg-white/10"></div>
                 <div className="text-center">
                   <div className="text-4xl font-bold gradient-text mb-2">99.9%</div>
-                  <div className="text-gray-400">Disponibilité</div>
+                  <div className="text-gray-400">Uptime</div>
                 </div>
                 <div className="hidden md:block w-px h-16 bg-white/10"></div>
                 <div className="text-center">
                   <div className="text-4xl font-bold gradient-text mb-2">24/7</div>
-                  <div className="text-gray-400">Support client</div>
+                  <div className="text-gray-400">Customer support</div>
                 </div>
               </div>
             </div>
@@ -314,64 +316,32 @@ export default function CafeAppLanding() {
       </section>
 
       {/* Pricing Section */}
-      <section ref={pricingRef} className="py-32 px-6 relative">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20 reveal">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Un tarif simple et <span className="gradient-text">transparent</span>
-            </h2>
-            <p className="text-xl text-gray-400">Essai gratuit de 14 jours • Sans engagement • Annulez à tout moment</p>
-          </div>
-
-          <div className="max-w-2xl mx-auto reveal">
-            <div className="glass rounded-3xl p-12 border-2 border-blue-500/50 relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-600 to-cyan-600 text-white px-6 py-2 rounded-bl-2xl font-semibold">
-                Populaire
-              </div>
-              
-              <div className="text-center mb-8">
-                <h3 className="text-3xl font-bold mb-4">Plan Mensuel</h3>
-                <div className="flex items-end justify-center gap-2 mb-6">
-                  <span className="text-6xl font-bold gradient-text">49 TND</span>
-                  <span className="text-2xl text-gray-400 mb-2">/mois</span>
+   <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto reveal">
+            {/* Basic Plan */}
+            <div className="glass rounded-3xl p-8 border border-gray-700/50 relative overflow-hidden hover:border-blue-500/30 transition-all">
+              <div className="text-center mb-6">
+                <h3 className="text-2xl font-bold mb-3">Basic</h3>
+                <div className="flex items-end justify-center gap-2 mb-3">
+                  <span className="text-5xl font-bold text-white">69</span>
+                  <span className="text-xl text-gray-400 mb-2">TND/mo</span>
                 </div>
-                <p className="text-gray-400">Tout ce dont vous avez besoin pour digitaliser votre café</p>
+                <p className="text-gray-400 text-sm">Perfect for small cafes</p>
               </div>
 
-              <div className="space-y-4 mb-8">
+              <div className="space-y-3 mb-8">
                 {[
-                  'Menu QR code personnalisé illimité',
-                  'Dashboard administrateur complet',
-                  'Commandes en temps réel',
-                  'Notifications instantanées',
-                  'Statistiques et rapports détaillés',
-                  'Gestion des produits et catégories',
-                  'Support client prioritaire 24/7',
-                  'Mises à jour automatiques gratuites',
-                  'Stockage cloud sécurisé',
-                  'Formation et documentation complète'
+                  'Admin dashboard',
+                  'Orders management',
+                  'Waiters management',
+                  'QR code menu',
+                  'Basic statistics',
+                  'Up to 20 tables'
                 ].map((feature, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <Check className="text-green-400 flex-shrink-0 mt-1" size={20} />
-                    <span className="text-gray-300">{feature}</span>
+                  <div key={i} className="flex items-start gap-2">
+                    <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
+                    <span className="text-gray-300 text-sm">{feature}</span>
                   </div>
                 ))}
-              </div>
-
-              <div className="glass rounded-2xl p-6 mb-8">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl flex items-center justify-center">
-                    <Star size={24} />
-                  </div>
-                  <div>
-                    <div className="font-bold text-lg">Essai gratuit de 14 jours</div>
-                    <div className="text-sm text-gray-400">Sans carte bancaire requise</div>
-                  </div>
-                </div>
-                <p className="text-sm text-gray-400">
-                  Testez toutes les fonctionnalités gratuitement pendant 14 jours. 
-                  Aucun engagement, annulez à tout moment.
-                </p>
               </div>
 
               <button 
@@ -379,25 +349,137 @@ export default function CafeAppLanding() {
                   const formSection = document.getElementById('form');
                   formSection?.scrollIntoView({ behavior: 'smooth' });
                 }}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition glow-btn flex items-center justify-center gap-2"
+                className="w-full bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-full font-semibold transition flex items-center justify-center gap-2"
               >
-                Commencer l'essai gratuit <ChevronRight />
+                Get started <ChevronRight size={18} />
               </button>
-
-              <p className="text-center text-sm text-gray-500 mt-6">
-                Le paiement sera disponible après la période d'essai
-              </p>
             </div>
 
-            <div className="mt-12 text-center reveal">
-              <div className="glass rounded-2xl p-6 inline-block">
-                <p className="text-gray-400 mb-2">🔒 Paiement 100% sécurisé</p>
-                <p className="text-sm text-gray-500">Vos données sont protégées et cryptées</p>
+            {/* Pro Plan with AI - Popular */}
+            <div className="glass rounded-3xl p-8 border-2 border-blue-500/50 relative overflow-hidden hover:border-blue-500 transition-all transform md:scale-105">
+              <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-600 to-cyan-600 text-white px-5 py-1.5 rounded-bl-2xl font-semibold text-sm">
+                Most Popular
               </div>
+              
+              <div className="text-center mb-6 pt-3">
+                <h3 className="text-2xl font-bold mb-3">Pro + AI</h3>
+                <div className="flex items-end justify-center gap-2 mb-3">
+                  <span className="text-5xl font-bold gradient-text">139</span>
+                  <span className="text-xl text-gray-400 mb-2">TND/mo</span>
+                </div>
+                <p className="text-gray-400 text-sm">AI-powered insights</p>
+              </div>
+
+              <div className="space-y-3 mb-8">
+                {[
+                  { text: 'Everything in Basic, plus:', highlight: true },
+                  { text: '🤖 AI Analytics Agent', highlight: false, special: true },
+                  { text: 'AI business insights', highlight: false },
+                  { text: 'Auto recommendations', highlight: false },
+                  { text: 'Real-time notifications', highlight: false },
+                  { text: 'Advanced analytics', highlight: false },
+                  { text: 'Product management', highlight: false },
+                  { text: 'Custom branding', highlight: false },
+                  { text: 'Up to 50 tables', highlight: false }
+                ].map((feature, i) => (
+                  <div key={i} className={`flex items-start gap-2 ${feature.highlight ? 'font-semibold text-blue-400' : ''}`}>
+                    {feature.highlight ? (
+                      <Star className="text-blue-400 flex-shrink-0 mt-0.5" size={18} />
+                    ) : feature.special ? (
+                      <Star className="text-cyan-400 flex-shrink-0 mt-0.5 animate-pulse" size={18} />
+                    ) : (
+                      <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
+                    )}
+                    <span className={`text-sm ${feature.special ? 'text-cyan-300 font-semibold' : 'text-gray-300'}`}>
+                      {feature.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => {
+                  const formSection = document.getElementById('form');
+                  formSection?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 rounded-full font-semibold hover:scale-105 transition glow-btn flex items-center justify-center gap-2"
+              >
+                Start free trial <ChevronRight size={18} />
+              </button>
+            </div>
+
+            {/* Customize Plan - New */}
+            <div className="glass rounded-3xl p-8 border border-purple-500/50 relative overflow-hidden hover:border-purple-500 transition-all">
+              <div className="absolute top-0 right-0 bg-gradient-to-br from-purple-600 to-pink-600 text-white px-5 py-1.5 rounded-bl-2xl font-semibold text-sm">
+                Premium
+              </div>
+              
+              <div className="text-center mb-6 pt-3">
+                <h3 className="text-2xl font-bold mb-3">Customize</h3>
+                <div className="flex items-end justify-center gap-2 mb-3">
+                  <span className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">199</span>
+                  <span className="text-xl text-gray-400 mb-2">TND/mo</span>
+                </div>
+                <p className="text-gray-400 text-sm">Full customization power</p>
+              </div>
+
+              <div className="space-y-3 mb-8">
+                {[
+                  { text: 'Everything in Pro, plus:', highlight: true },
+                  { text: '🎨 Custom table themes', highlight: false, special: true },
+                  { text: 'Upload custom photos', highlight: false, special: true },
+                  { text: 'Branded table designs', highlight: false },
+                  { text: 'Photo galleries', highlight: false },
+                  { text: 'Visual menu builder', highlight: false },
+                  { text: 'Multi-location support', highlight: false },
+                  { text: 'Priority support', highlight: false },
+                  { text: 'Unlimited tables', highlight: false }
+                ].map((feature, i) => (
+                  <div key={i} className={`flex items-start gap-2 ${feature.highlight ? 'font-semibold text-purple-400' : ''}`}>
+                    {feature.highlight ? (
+                      <Star className="text-purple-400 flex-shrink-0 mt-0.5" size={18} />
+                    ) : feature.special ? (
+                      <Star className="text-pink-400 flex-shrink-0 mt-0.5 animate-pulse" size={18} />
+                    ) : (
+                      <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
+                    )}
+                    <span className={`text-sm ${feature.special ? 'text-pink-300 font-semibold' : 'text-gray-300'}`}>
+                      {feature.text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => {
+                  const formSection = document.getElementById('form');
+                  formSection?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 rounded-full font-semibold hover:scale-105 transition flex items-center justify-center gap-2"
+                style={{boxShadow: '0 0 30px rgba(168, 85, 247, 0.4)'}}
+              >
+                Contact us <ChevronRight size={18} />
+              </button>
             </div>
           </div>
-        </div>
-      </section>
+
+          {/* Trial Info */}
+          <div className="max-w-2xl mx-auto mt-12 reveal">
+            <div className="glass rounded-2xl p-6 text-center">
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl flex items-center justify-center">
+                  <Star size={20} />
+                </div>
+                <div className="font-bold text-lg">14-day free trial on all plans</div>
+              </div>
+              <p className="text-sm text-gray-400">
+                No credit card required • Cancel anytime • Full access to all features
+              </p>
+            </div>
+          </div>
+
+          {/* Trial Info */}
+        
 
       {/* Registration Form Section */}
 
@@ -406,10 +488,10 @@ export default function CafeAppLanding() {
         <div className="max-w-5xl mx-auto reveal">
           <div className="text-center mb-12">
             <h2 className="text-4xl md:text-5xl font-bold mb-6">
-              Créez votre café digital maintenant 
+              Create your digital cafe now 
             </h2>
             <p className="text-xl text-gray-400">
-              Remplissez le formulaire et commencez votre essai gratuit de 14 jours
+              Fill out the form and start your 14-day free trial
             </p>
           </div>
 
@@ -424,7 +506,7 @@ export default function CafeAppLanding() {
             <Coffee className="text-blue-400" size={32} />
             <span className="gradient-text">CoffAI</span>
           </div>
-          <p className="text-gray-400 mb-6">La solution digitale pour les cafés modernes</p>
+          <p className="text-gray-400 mb-6">The digital solution for modern cafes</p>
           <p className="text-gray-500 mt-8">© 2025 CoffAI. Made in Tunisia</p>
         </div>
       </footer>
@@ -434,14 +516,14 @@ export default function CafeAppLanding() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6" onClick={() => setIsVideoOpen(false)}>
           <div className="glass rounded-3xl p-8 max-w-4xl w-full" onClick={e => e.stopPropagation()}>
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold">Démo CoffAI</h3>
+              <h3 className="text-2xl font-bold">CoffAI Demo</h3>
               <button onClick={() => setIsVideoOpen(false)}>
                 <X size={32} />
               </button>
             </div>
             <div className="aspect-video bg-gradient-to-br from-blue-900 to-cyan-900 rounded-2xl flex items-center justify-center">
               <Play size={64} className="text-white/50" />
-              <p className="text-white/50 ml-4">Vidéo de démonstration</p>
+              <p className="text-white/50 ml-4">Demo video</p>
             </div>
           </div>
         </div>

@@ -1,7 +1,11 @@
-import React, { useEffect, useState } from "react";
+import  { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
-import api from "../../api/axiosInstance";
 import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
+import cafeApi from "../../api/cafeApiInstance";
+import {
+  Box,
+  Button,
+} from '@mui/material';
 export default function AdminCharts() {
   const [salesData, setSalesData] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
@@ -9,9 +13,8 @@ export default function AdminCharts() {
   const [totalItems, setTotalItems] = useState(0);
 
   useEffect(() => {
-    const headers = { 'x-api-key': `${localStorage.getItem('token')}` };
     
-    api.get("/stats/sales-by-item", { headers })
+    cafeApi.get("/stats/sales-by-item")
       .then(res => {
         const formattedData = res.data.map(d => ({
           name: d.Item.name,
@@ -24,7 +27,7 @@ export default function AdminCharts() {
       })
       .catch(err => console.error(err));
       
-    api.get("/stats/daily-revenue", { headers })
+    cafeApi.get("/stats/daily-revenue")
       .then(res => {
         const formattedData = res.data.map(d => ({
           date: new Date(d.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }),
@@ -71,11 +74,37 @@ export default function AdminCharts() {
         borderRadius: '16px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
       }}>
-        <div className="fixed top-6 left-6 z-50 text-white">
-        <button onClick={() => window.history.back()} className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition">
-          <ArrowLeft size={20} />
-          <span className="hidden sm:inline ">Retour</span>
-        </button>
+          <Button
+    onClick={() => window.history.back()}
+    startIcon={<ArrowLeft size={20} />}
+    sx={{
+      position: "absolute",
+      top: 36,
+      left: 36,
+      backdropFilter: "blur(10px)",
+      backgroundColor: "rgba(255, 255, 255, 0.1)",
+      color: "white",
+      borderRadius: "50px",
+      px: 2,
+      py: 1,
+      textTransform: "none",
+      transition: "transform 0.2s",
+      zIndex: 10,
+      "&:hover": {
+        backgroundColor: "rgba(255, 255, 255, 0.15)",
+        transform: "scale(1.05)",
+      },
+      "& .MuiButton-startIcon": {
+        marginRight: { xs: 0, sm: 1 },
+      },
+    }}
+  >
+    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+      Back
+    </Box>
+  </Button>
+        <div className="relative top-6 left-6 z-50 text-white">
+     
       </div>
         <h1 style={{
           color: '#f1f5f9',

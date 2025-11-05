@@ -350,6 +350,7 @@ const GetInfos = () => {
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Plan</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Paiements</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Vérifié</th>
+                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Start Date</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Date Expiration</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Actions</th>
                                         </tr>
@@ -422,11 +423,18 @@ const GetInfos = () => {
                                                                 </button>
                                                             )}
                                                         </td>
+                                                        <td className="px-6 py-4 text-white">
+                                                        {cafe.subscriptionStartDate ? new Date(cafe.subscriptionStartDate).toLocaleDateString('fr-FR', {
+                                                                        day: '2-digit',
+                                                                        month: 'short',
+                                                                        year: 'numeric'
+                                                                    }) : 'N/A'}
+                                                        </td>
                                                         <td className="px-6 py-4">
                                                             {editingDate === cafe.id ? (
                                                                 <input
                                                                     type="datetime-local"
-                                                                    defaultValue={cafe.apiKeyExpiresAt ? new Date(cafe.apiKeyExpiresAt).toISOString().slice(0, 16) : ''}
+                                                                    defaultValue={cafe.subscriptionEndDate ? new Date(cafe.subscriptionEndDate).toISOString().slice(0, 16) : ''}
                                                                     onBlur={(e) => {
                                                                         if (e.target.value) {
                                                                             handleUpdateapiKeyExpiresAt(cafe.id, e.target.value)
@@ -449,7 +457,7 @@ const GetInfos = () => {
                                                                     onClick={() => setEditingDate(cafe.id)}
                                                                     className="text-sm text-gray-300 hover:text-white transition flex items-center gap-1"
                                                                 >
-                                                                    {cafe.apiKeyExpiresAt ? new Date(cafe.apiKeyExpiresAt).toLocaleDateString('fr-FR', {
+                                                                    {cafe.subscriptionEndDate ? new Date(cafe.subscriptionEndDate).toLocaleDateString('fr-FR', {
                                                                         day: '2-digit',
                                                                         month: 'short',
                                                                         year: 'numeric'

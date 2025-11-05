@@ -1,7 +1,11 @@
-import React, { useState,useEffect } from "react";
-import api from "../../api/axiosInstance";
+import { useState,useEffect } from "react";
 import axios from 'axios'
 import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
+import cafeApi from "../../api/cafeApiInstance";
+import {
+  Box,
+  Button,
+} from '@mui/material';
 // Helper function to safely access nested properties
 const safeGet = (obj, path, defaultValue = null) => {
   try {
@@ -48,8 +52,7 @@ export default function AdminAgent() {
     setLoading(true);
     setError(null);
     try {
-      const headers = { 'x-api-key': `${localStorage.getItem('token')}` };
-      const res = await api.get("/getInsights", { headers });
+      const res = await cafeApi.get("/getInsights");
       setInsights(res.data);
     } catch (err) {
       console.error(err);
@@ -258,12 +261,35 @@ Koun mdefini, 3tini actions li njmo na3mlouhom w koun professionnel.
         borderRadius: '16px',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)'
       }}>
-        <div className="fixed top-6 left-6 z-50 text-white">
-        <button onClick={() => window.history.back()} className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition">
-          <ArrowLeft size={20} />
-          <span className="hidden sm:inline">Retour</span>
-        </button>
-      </div>
+      <Button
+    onClick={() => window.history.back()}
+    startIcon={<ArrowLeft size={20} />}
+    sx={{
+      position: "absolute",
+      top: 36,
+      left: 36,
+      backdropFilter: "blur(10px)",
+      backgroundColor: "rgba(255, 255, 255, 0.1)",
+      color: "white",
+      borderRadius: "50px",
+      px: 2,
+      py: 1,
+      textTransform: "none",
+      transition: "transform 0.2s",
+      zIndex: 10,
+      "&:hover": {
+        backgroundColor: "rgba(255, 255, 255, 0.15)",
+        transform: "scale(1.05)",
+      },
+      "& .MuiButton-startIcon": {
+        marginRight: { xs: 0, sm: 1 },
+      },
+    }}
+  >
+    <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+      Back
+    </Box>
+  </Button>
         <div style={{ display: 'flex', alignItems: 'center', marginBottom: '12px' }}>
           <div style={{
             background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',

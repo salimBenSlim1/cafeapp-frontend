@@ -38,8 +38,8 @@ import {
 import { io } from 'socket.io-client';
 import SuccessMessage from './SuccessAlert';
 import './AdminOrders.css';
-import api from '../../api/axiosInstance';
-import axios from 'axios';
+
+import cafeApi from '../../api/cafeApiInstance';
 
 function AdminOrders() {
   const [orders, setOrders] = useState([]);
@@ -60,41 +60,50 @@ function AdminOrders() {
   const printRef = useRef();
 
   // Socket.io setup
+ useEffect(() => {
+  const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
+  const newSocket = io(SOCKET_URL, {
+    reconnection: true,
+    reconnectionDelay: 1000,
+    transports: ['websocket'],
+    withCredentials: true
+  });
+
+  newSocket.on('connect', () => {
+    console.log('Socket connected:', newSocket.id);
+    const token = localStorage.getItem('token');
+    if (token) {
+      newSocket.emit('joinCafe', { cafeId: token });
+    }
+  });
+
+  newSocket.on('newAlert', (data) => {
+    setAlerts((prev) => [...prev, data]);
+  });
+
+  newSocket.on('newOrder', (order) => {
+    console.log('New order received:', order);
+    setNotificationCount((prev) => prev + 1);
+    setRefresh((prev) => !prev);
+  });
+
+  newSocket.on('orderUpdated', (order) => {
+    console.log('Order updated:', order);
+    setRefresh((prev) => !prev);
+  });
+
+  return () => {
+    if (newSocket.connected) newSocket.close();
+  };
+}, []);
+
+
   useEffect(() => {
-    const SOCKET_URL = process.env.REACT_APP_WS_URL;
-    const newSocket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
-      withCredentials: true
-    });
-    newSocket.emit('joinCafe',{cafeId:localStorage.getItem('token')})
-    newSocket.on('newAlert', (data) => {
-      setAlerts((prev) => [...prev, data]);
-    });
-    
-    newSocket.on('newOrder', (order) => {
-      console.log('New order received:', order);
-      setNotificationCount((prev) => prev + 1);
-      setRefresh((prev) => !prev);
-    });
-
-    newSocket.on('orderUpdated', (order) => {
-      console.log('Order updated:', order);
-      setRefresh((prev) => !prev);
-    });
-
-    return () => newSocket.close();
-  }, []);
-
-  useEffect(() => {
-    axios.get(`${process.env.REACT_APP_API_URL}/api/itemsEndSoon`, {
-      headers: { 'x-api-key': localStorage.getItem('token') }
-    })
+    cafeApi.get(`/itemsEndSoon`)
     .then(r => setAlerts(r.data))
     .catch(err => {});
     
-    api.get("/getOrders", {
-      headers: { 'x-api-key': localStorage.getItem('token') }
-    })
+    cafeApi.get("/getOrders")
     .then((r) => {
       console.log(r.data,'ddd')
       const filteredData = r.data.filter((e) => {
@@ -269,10 +278,8 @@ const handlePrintReceipt = (order) => {
 
   const handleUpdateQuantity = () => {
     if (!selectedOrder || !editingItem) return;
-    api.put('/updateOrder/' + editingItem.id, {
+    cafeApi.put('/updateOrder/' + editingItem.id, {
       quantity: parseInt(itemQuantity),
-    }, {
-      headers: { 'x-api-key': localStorage.getItem('token') }
     })
     .then((r) => {
       setOpenDialog(false);
@@ -290,9 +297,7 @@ const handlePrintReceipt = (order) => {
 
   const handleConfirmDelete = () => {
     if (!itemToDelete) return;
-    api.delete('/deleteOrder/' + itemToDelete.id, {
-      headers: { 'x-api-key': localStorage.getItem('token') }
-    })
+    cafeApi.delete('/deleteOrder/' + itemToDelete.id)
     .then((r) => {
       setRefresh(!refresh);
       setOpenDialog(false);
@@ -309,11 +314,9 @@ const handlePrintReceipt = (order) => {
   };
 
   const updateOrderStatus = (id, upd, tableId) => {
-    api.put('/updateOrderStatus/' + id, {
+    cafeApi.put('/updateOrderStatus/' + id, {
       status: upd,
       tableId
-    }, {
-      headers: { 'x-api-key': localStorage.getItem('token') }
     })
     .then((r) => {
       setShowSuccess(true);
@@ -390,7 +393,7 @@ const handlePrintReceipt = (order) => {
     }}
   >
     <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-      Retour
+      Back
     </Box>
   </Button>
 
@@ -428,7 +431,7 @@ const handlePrintReceipt = (order) => {
       </div>
       <div className="ml-3 flex-1">
         <p className="text-sm text-amber-800">
-          Item <span className="font-semibold">{e.name}</span> will end - il vous reste que {e.stock} en stock.{' '}
+          Item <span className="font-semibold">{e.name}</span> will end - You only have {e.stock} left in stock.{' '}
           <a 
             href="/admin/items" 
             className="underline font-medium hover:text-amber-900 transition-colors"
