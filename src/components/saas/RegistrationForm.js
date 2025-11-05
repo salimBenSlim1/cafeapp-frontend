@@ -348,7 +348,7 @@ export default function RegistrationForm() {
       </button>
 
       <p className="text-center text-gray-500 text-sm mt-4">
-        ✨ 14-day free trial • No credit card • Cancel anytime
+        ✨ 7-day free trial • No credit card • Cancel anytime
       </p>
     </div>
   )}

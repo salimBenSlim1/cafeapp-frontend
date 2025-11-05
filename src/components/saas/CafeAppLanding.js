@@ -470,7 +470,7 @@ export default function CafeAppLanding() {
                 <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl flex items-center justify-center">
                   <Star size={20} />
                 </div>
-                <div className="font-bold text-lg">14-day free trial on all plans</div>
+                <div className="font-bold text-lg">7-day free trial on all plans</div>
               </div>
               <p className="text-sm text-gray-400">
                 No credit card required • Cancel anytime • Full access to all features
@@ -491,7 +491,7 @@ export default function CafeAppLanding() {
               Create your digital cafe now 
             </h2>
             <p className="text-xl text-gray-400">
-              Fill out the form and start your 14-day free trial
+              Fill out the form and start your 7-day free trial
             </p>
           </div>
 
