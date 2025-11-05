@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Users, Lock, Eye, EyeOff, LogIn, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import api from '../../api/axiosInstance';
-import {   useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 export default function ServerLogin() {
@@ -11,14 +11,14 @@ export default function ServerLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-    const location = useLocation(); // gives you the full location object
+  const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
 
-  const id = searchParams.get("id"); // extract ?id=123
+  const id = searchParams.get("id");
     
   const handleLogin = async () => {
     if (!name || !password) {
-      setError('Veuillez remplir tous les champs');
+      setError('Please fill in all fields');
       return;
     }
 
@@ -35,20 +35,17 @@ export default function ServerLogin() {
       localStorage.setItem('id',response.data.id)
       localStorage.setItem('cafeId',id)
       if (response.data && response.data.serverToken) {
-        // Sauvegarder le token et les infos du serveur
         localStorage.setItem('serverToken', response.data.serverToken);
-        // localStorage.setItem('serverInfo', JSON.stringify(response.data.server));
         
-        setSuccess('Connexion réussie ! Redirection...');
+        setSuccess('Login successful! Redirecting...');
         
-        // Rediriger vers le dashboard serveur après 1 seconde
         setTimeout(() => {
           window.location.href = '/server-dashboard';
         }, 1000);
       }
     } catch (error) {
       console.error('Login error:', error);
-      setError(error.response?.data?.message || 'Nom ou mot de passe incorrect');
+      setError(error.response?.data?.message || 'Incorrect name or password');
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +72,8 @@ export default function ServerLogin() {
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-2xl mb-4 shadow-2xl">
             <Users className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Espace Serveur</h1>
-          <p className="text-slate-400">Connectez-vous pour gérer vos tables</p>
+          <h1 className="text-4xl font-bold text-white mb-2">Server Portal</h1>
+          <p className="text-slate-400">Login to manage your tables</p>
         </div>
 
         {/* Login Card */}
@@ -101,7 +98,7 @@ export default function ServerLogin() {
             {/* Name Input */}
             <div>
               <label className="block text-slate-300 text-sm font-medium mb-2">
-                Nom Complet
+                Full Name
               </label>
               <div className="relative">
                 <Users className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -110,7 +107,7 @@ export default function ServerLogin() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  placeholder="Ahmed Ben Ali"
+                  placeholder="John Doe"
                   className="w-full bg-slate-900/50 border border-slate-700 rounded-xl pl-12 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   disabled={isLoading}
                 />
@@ -120,7 +117,7 @@ export default function ServerLogin() {
             {/* Password Input */}
             <div>
               <label className="block text-slate-300 text-sm font-medium mb-2">
-                Mot de passe
+                Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
@@ -157,12 +154,12 @@ export default function ServerLogin() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Connexion en cours...
+                  Logging in...
                 </>
               ) : (
                 <>
                   <LogIn className="w-5 h-5" />
-                  Se Connecter
+                  Sign In
                 </>
               )}
             </button>
@@ -171,7 +168,7 @@ export default function ServerLogin() {
           {/* Additional Info */}
           <div className="mt-6 pt-6 border-t border-slate-700">
             <p className="text-slate-400 text-sm text-center">
-              Contactez votre manager si vous avez oublié vos identifiants
+              Contact your manager if you forgot your credentials
             </p>
           </div>
         </div>
