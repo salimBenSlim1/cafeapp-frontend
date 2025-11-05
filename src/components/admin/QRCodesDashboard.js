@@ -13,61 +13,48 @@ export default function QRCodesDashboard() {
   }, []);
 
   const handleDownload = async () => {
-    setIsDownloading(true);
+  setIsDownloading(true);
 
-    try {
-      console.log('🔄 Début du téléchargement...');
+  try {
+    console.log('🔄 Début du téléchargement...');
 
-      const response = await cafeApi.get(
-         `/downloadQRCodesPDF`,
-         {
-           headers: {
-             'Accept': 'application/pdf',
-           }
+    const response = await cafeApi.get(`/downloadQRCodesPDF`, {
+      headers: {
+        Accept: 'application/pdf',
+      },
+      responseType: 'blob', // 👈 Tell axios to expect binary
+    });
 
-         });
+    // Create blob and download
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Cafe_${"20"}_QRCodes.pdf`;
+    document.body.appendChild(link);
+    link.click();
 
-      // Vérifier que c'est bien un PDF
-      if (!response.data.type.includes('pdf') && response.data.type !== 'application/octet-stream') {
-        throw new Error('Le fichier reçu n\'est pas un PDF');
-      }
+    setTimeout(() => {
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    }, 100);
 
-      // Créer le blob avec le bon type MIME
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-
-      // Créer et cliquer sur le lien de téléchargement
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `Cafe_${"20"}_QRCodes.pdf`;
-      link.style.display = 'none';
-      
-      document.body.appendChild(link);
-      link.click();
-      
-      // Nettoyage après un court délai
-      setTimeout(() => {
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-
-    } catch (error) {
-      let errorMessage = 'Erreur lors du téléchargement du PDF';
-
-      if (error.response) {
-        errorMessage = `Erreur serveur: ${error.response.status}`;
-      } else if (error.request) {
-        errorMessage = 'Pas de réponse du serveur. Vérifiez votre connexion.';
-      } else if (error.message.includes('Could not establish connection')) {
-        errorMessage = 'Une extension de navigateur bloque le téléchargement. Essayez en navigation privée.';
-      } else {
-        errorMessage = error.message;
-      }
-      console.log(errorMessage);
-    } finally {
-      setIsDownloading(false);
+    console.log('✅ Téléchargement terminé !');
+  } catch (error) {
+    let errorMessage = 'Erreur lors du téléchargement du PDF';
+    if (error.response) {
+      errorMessage = `Erreur serveur: ${error.response.status}`;
+    } else if (error.request) {
+      errorMessage = 'Pas de réponse du serveur. Vérifiez votre connexion.';
+    } else {
+      errorMessage = error.message;
     }
-  };
+    console.log(errorMessage);
+  } finally {
+    setIsDownloading(false);
+  }
+};
+
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
