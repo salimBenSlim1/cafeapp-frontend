@@ -22,6 +22,81 @@ export default function ManageWaiters() {
   });
   const [availableTables, setAvailableTables] = useState([]);
   const [selectedTables, setSelectedTables] = useState([]);
+  const waiterResponsiveStyles = `
+  @media (max-width: 768px) {
+    .waiters-container {
+      padding: 16px !important;
+    }
+    
+    .header-section {
+      flex-direction: column !important;
+      gap: 16px !important;
+    }
+    
+    .header-section .header-left {
+      width: 100% !important;
+    }
+    
+    .stats-cards {
+      grid-template-columns: 1fr !important;
+      gap: 12px !important;
+    }
+    
+    .waiter-card {
+      padding: 16px !important;
+    }
+    
+    .waiter-info {
+      flex-direction: column !important;
+      gap: 12px !important;
+    }
+    
+    .waiter-avatar {
+      width: 48px !important;
+      height: 48px !important;
+      font-size: 1rem !important;
+    }
+    
+    .waiter-name {
+      font-size: 1.125rem !important;
+    }
+    
+    .waiter-actions {
+      flex-wrap: wrap !important;
+      gap: 8px !important;
+    }
+    
+    .waiter-stats {
+      display: none !important;
+    }
+    
+    .modal-content {
+      margin: 16px !important;
+      padding: 20px !important;
+      max-height: 90vh !important;
+      overflow-y: auto !important;
+    }
+    
+    .tables-grid {
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 8px !important;
+    }
+    
+    .table-button {
+      padding: 12px !important;
+    }
+  }
+  
+  @media (max-width: 500px) {
+    .header-section h1 {
+      font-size: 1.75rem !important;
+    }
+    
+    .tables-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
+`;
  const navigate=useNavigate()
   useEffect(() => {
     loadWaiters();
@@ -343,7 +418,7 @@ const toggleTableSelection = async (tableNumber) => {
   }
  
   return (
-  <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
+<div className="waiters-container min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
@@ -353,7 +428,7 @@ const toggleTableSelection = async (tableNumber) => {
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header */}
         <div className="mb-8 animate-fadeIn">
-  <div className="flex items-center justify-between mb-6">
+<div className="header-section flex flex-col md:flex-row items-start md:items-center justify-between mb-6">
     <div className="flex items-center gap-4">
       <button
         onClick={() => window.history.back()}
@@ -368,7 +443,7 @@ const toggleTableSelection = async (tableNumber) => {
       </div>
       
       <div>
-        <h1 className="text-4xl font-bold text-white">Server Management</h1>
+        <h1 className="text-4xl font-bold max-sm:text-lg text-white">Server Management</h1>
         <p className="text-slate-400 mt-1">Manage your team and their assignments</p>
       </div>
     </div>
@@ -383,7 +458,7 @@ const toggleTableSelection = async (tableNumber) => {
   </div>
 
   {/* Stats Cards */}
-  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+<div className="stats-cards grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
     <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl p-4">
       <div className="flex items-center justify-between">
         <div>
@@ -438,13 +513,8 @@ const toggleTableSelection = async (tableNumber) => {
             const waiterTables = availableTables.filter(t => t.assignedTo === waiter.id);
 
             return (
-              <div
-                key={waiter.id}
-                className="bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl overflow-hidden hover:border-slate-600 transition-all"
-                style={{
-                  animation: `slideUp 0.4s ease-out ${index * 0.1}s both`
-                }}
-              >
+              <div className="waiter-info overflow-y-scroll flex flex-col md:flex-row items-start md:items-center gap-4 flex-1">
+
                 <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">

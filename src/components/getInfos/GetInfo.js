@@ -10,7 +10,8 @@ const GetInfos = () => {
     const [error, setError] = useState(null)
     const [creatingId, setCreatingId] = useState(null)
     const [successMessage, setSuccessMessage] = useState(null)
-    
+    const [customTablesInput, setCustomTablesInput] = useState({})
+
     // Table states
     const [searchTerm, setSearchTerm] = useState('')
     const [currentPage, setCurrentPage] = useState(1)
@@ -244,72 +245,96 @@ const GetInfos = () => {
                                 En Attente ({pendingData.length})
                             </h2>
                             
-                            <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
-                                {pendingData.length === 0 ? (
-                                    <p className="text-gray-400 text-center py-8">Aucune inscription en attente</p>
-                                ) : (
-                                    pendingData.map((e, i) => (
-                                        <div key={i} className="bg-white/5 rounded-xl p-4 border border-white/10 hover:bg-white/10 transition">
-                                            <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
-                                                <Coffee className="w-4 h-4 text-blue-400" />
-                                                {e.nomCafe}
-                                            </h3>
-                                            
-                                            <div className="space-y-2 text-sm">
-                                                <div className="flex items-center gap-2 text-gray-300">
-                                                    <User className="w-4 h-4 text-blue-400" />
-                                                    {e.nomPerson}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-gray-300">
-                                                    <Mail className="w-4 h-4 text-blue-400" />
-                                                    {e.email}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-gray-300">
-                                                    <Mail className="w-4 h-4 text-blue-400" />
-                                                    {e.password}
-                                                </div>
-                                                <div className="flex items-center gap-2 text-gray-300">
-                                                    <Phone className="w-4 h-4 text-blue-400" />
-                                                    {e.phone}
-                                                </div>
-                                               
-                                                <div className="flex items-center gap-2 text-gray-300">
-                                                    <CreditCard className="w-4 h-4 text-blue-400" />
-                                                    Plan: <span className="font-semibold text-blue-300">{e.plan}</span>
-                                                </div>
-                                            </div>
+                          <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
+    {pendingData.length === 0 ? (
+        <p className="text-gray-400 text-center py-8">Aucune inscription en attente</p>
+    ) : (
+        pendingData.map((e, i) => (
+            <div key={i} className="bg-white/5 rounded-xl p-4 border border-white/10 hover:bg-white/10 transition">
+                <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
+                    <Coffee className="w-4 h-4 text-blue-400" />
+                    {e.nomCafe}
+                </h3>
+                
+                <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-gray-300">
+                        <User className="w-4 h-4 text-blue-400" />
+                        {e.nomPerson}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                        <Mail className="w-4 h-4 text-blue-400" />
+                        {e.email}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                        <Mail className="w-4 h-4 text-blue-400" />
+                        {e.password}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                        <Phone className="w-4 h-4 text-blue-400" />
+                        {e.phone}
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-300">
+                        <CreditCard className="w-4 h-4 text-blue-400" />
+                        Plan: <span className="font-semibold text-blue-300">{e.plan}</span>
+                    </div>
+                </div>
 
-                                            <button
-                                                onClick={() => handleCreateCafe({
-                                                    cafeName: e.nomCafe,
-                                                    email: e.email,
-                                                    plan: e.plan,
-                                                    phone:e.phone,
-                                                    nomPerson:e.nomPerson
-                                                }, i)}
-                                                disabled={creatingId === i}
-                                                className={`w-full mt-4 py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
-                                                    creatingId === i
-                                                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                                                        : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700'
-                                                }`}
-                                            >
-                                                {creatingId === i ? (
-                                                    <>
-                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                        Création...
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <CheckCircle className="w-4 h-4" />
-                                                        Créer
-                                                    </>
-                                                )}
-                                            </button>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
+                {/* Add Custom Tables Input - Only show for customize plan */}
+                {e.plan === 'custom' && (
+                    <div className="mt-3 pt-3 border-t border-white/10">
+                        <label className="block text-xs text-gray-400 mb-2">
+                            Nombre de tables personnalisées
+                        </label>
+                        <input
+                            type="number"
+                            min="1"
+                            placeholder="Ex: 30"
+                            value={customTablesInput[i] || ''}
+                            onChange={(e) => setCustomTablesInput({
+                                ...customTablesInput,
+                                [i]: e.target.value
+                            })}
+                            className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 placeholder-gray-500"
+                        />
+                    </div>
+                )}
+
+                <button
+                    onClick={() => handleCreateCafe({
+                        cafeName: e.nomCafe,
+                        email: e.email,
+                        plan: e.plan,
+                        phone: e.phone,
+                        nomPerson: e.nomPerson,
+                        ...(e.plan === 'custom' && customTablesInput[i] && {
+                            customTables: parseInt(customTablesInput[i])
+                        })
+                    }, i)}
+                    disabled={creatingId === i || (e.plan === 'custom' && !customTablesInput[i])}
+                    className={`w-full mt-4 py-2 px-4 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 ${
+                        creatingId === i || (e.plan === 'custom' && !customTablesInput[i])
+                            ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                            : e.plan === 'custom'
+                            ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
+                            : 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white hover:from-blue-700 hover:to-cyan-700'
+                    }`}
+                >
+                    {creatingId === i ? (
+                        <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Création...
+                        </>
+                    ) : (
+                        <>
+                            <CheckCircle className="w-4 h-4" />
+                            {e.plan === 'custom' && !customTablesInput[i] ? 'Entrez le nombre de tables' : 'Créer'}
+                        </>
+                    )}
+                </button>
+            </div>
+        ))
+    )}
+</div>
                         </div>
                     </div>
 
@@ -365,7 +390,6 @@ const GetInfos = () => {
                                         ) : (
                                             currentCafes.map((cafe, index) => (
                                                 <React.Fragment key={index}>
-                                                    {console.log(cafe)}
                                                     <tr className="hover:bg-white/5 transition">
                                                         <td className="px-6 py-4">
                                                             <div>
@@ -563,7 +587,6 @@ const GetInfos = () => {
                                                                                 {cafe.Payements.map((payment, pIndex) => (
                                                                                     <div key={pIndex} className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition">
                                                                                         
-                                                                                        {console.log(payment)}
                                                                                         <div className="flex items-center justify-between mb-2">
                                                                                             <span className="text-xs font-semibold text-gray-400">Paiement #{pIndex + 1}</span>
                                                                                             <span className="text-sm font-bold text-green-400">{parseFloat(payment.amount || 0).toFixed(2)} DT</span>

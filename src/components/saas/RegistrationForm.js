@@ -255,38 +255,55 @@ export default function RegistrationForm() {
   <label className="block text-sm font-semibold mb-3 text-gray-300">
     Choose your plan <span className="text-red-400">*</span>
   </label>
-  <div className="grid md:grid-cols-2 gap-4">
-    {[
-      { value: 'basic', name: 'Basic', price: '69 TND', features: 'Up to 20 tables' },
-      { value: 'pro', name: 'Pro + AI', price: '139 TND', features: '50 tables + AI Agent', popular: true }
-    ].map(plan => (
-      <label
-        key={plan.value}
-        className={`relative flex flex-col p-5 rounded-xl border-2 cursor-pointer transition ${
-          formData.plan === plan.value
-            ? 'border-blue-600 bg-blue-600/10'
+<div className="grid md:grid-cols-3 gap-4">
+  {[
+    { value: 'basic', name: 'Basic', price: '69 TND', features: 'Up to 20 tables' },
+    { value: 'pro', name: 'Pro + AI', price: '139 TND', features: '50 tables + AI Agent', popular: true },
+    { value: 'custom', name: 'Customize', price: 'Custom', features: 'Tell us your table count', premium: true, needsInfo: true }
+  ].map(plan => (
+    <label
+      key={plan.value}
+      className={`relative flex flex-col p-5 rounded-xl border-2 cursor-pointer transition ${
+        formData.plan === plan.value
+          ? plan.premium 
+            ? 'border-purple-600 bg-purple-600/10'
+            : 'border-blue-600 bg-blue-600/10'
+          : plan.premium
+            ? 'border-purple-500/30 bg-white/5 hover:border-purple-600/50'
             : 'border-white/10 bg-white/5 hover:border-blue-600/50'
-        }`}
-      >
-        <input
-          type="radio"
-          name="plan"
-          value={plan.value}
-          checked={formData.plan === plan.value}
-          onChange={handleChange}
-          className="sr-only"
-        />
-        {plan.popular && (
-          <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-cyan-600 text-xs px-3 py-1 rounded-full font-semibold">
-            Most Popular
-          </span>
+      }`}
+    >
+      <input
+        type="radio"
+        name="plan"
+        value={plan.value}
+        checked={formData.plan === plan.value}
+        onChange={handleChange}
+        className="sr-only"
+      />
+      {plan.popular && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-cyan-600 text-xs px-3 py-1 rounded-full font-semibold">
+          Most Popular
+        </span>
+      )}
+      {plan.premium && (
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-purple-600 to-pink-600 text-xs px-3 py-1 rounded-full font-semibold">
+          Premium
+        </span>
+      )}
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-lg font-bold">{plan.name}</span>
+        {plan.needsInfo && (
+          <span className="text-purple-400 font-bold text-2xl" title="Custom pricing - we'll contact you">?</span>
         )}
-        <span className="text-lg font-bold mb-1">{plan.name}</span>
-        <span className="text-2xl font-bold gradient-text mb-2">{plan.price}<span className="text-base text-gray-400">/month</span></span>
-        <span className="text-sm text-gray-400">{plan.features}</span>
-      </label>
-    ))}
-  </div>
+      </div>
+      <span className={`text-2xl font-bold mb-2 ${plan.premium ? 'bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent' : 'gradient-text'}`}>
+        {plan.price}{!plan.premium && <span className="text-base text-gray-400">/month</span>}
+      </span>
+      <span className="text-sm text-gray-400">{plan.features}</span>
+    </label>
+  ))}
+</div>
 </div>
 
      

@@ -316,152 +316,151 @@ export default function CafeAppLanding() {
       </section>
 
       {/* Pricing Section */}
-   <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto reveal">
-            {/* Basic Plan */}
-            <div className="glass rounded-3xl p-8 border border-gray-700/50 relative overflow-hidden hover:border-blue-500/30 transition-all">
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold mb-3">Basic</h3>
-                <div className="flex items-end justify-center gap-2 mb-3">
-                  <span className="text-5xl font-bold text-white">69</span>
-                  <span className="text-xl text-gray-400 mb-2">TND/mo</span>
-                </div>
-                <p className="text-gray-400 text-sm">Perfect for small cafes</p>
-              </div>
+<div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto reveal">
+  {/* Basic Plan */}
+  <div className="glass rounded-3xl p-8 border border-gray-700/50 relative overflow-hidden hover:border-blue-500/30 transition-all">
+    <div className="text-center mb-6">
+      <h3 className="text-2xl font-bold mb-3">Basic</h3>
+      <div className="flex items-end justify-center gap-2 mb-3">
+        <span className="text-5xl font-bold text-white">69</span>
+        <span className="text-xl text-gray-400 mb-2">TND/mo</span>
+      </div>
+      <p className="text-gray-400 text-sm">Perfect for small cafes</p>
+    </div>
 
-              <div className="space-y-3 mb-8">
-                {[
-                  'Admin dashboard',
-                  'Orders management',
-                  'Waiters management',
-                  'QR code menu',
-                  'Basic statistics',
-                  'Up to 20 tables'
-                ].map((feature, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
-                    <span className="text-gray-300 text-sm">{feature}</span>
-                  </div>
-                ))}
-              </div>
+    <div className="space-y-3 mb-8">
+      {[
+        'Admin dashboard',
+        'Orders management',
+        'Waiters management',
+        'QR code menu',
+        'Basic statistics',
+        'Up to 20 tables'
+      ].map((feature, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
+          <span className="text-gray-300 text-sm">{feature}</span>
+        </div>
+      ))}
+    </div>
 
-              <button 
-                onClick={() => {
-                  const formSection = document.getElementById('form');
-                  formSection?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-full font-semibold transition flex items-center justify-center gap-2"
-              >
-                Get started <ChevronRight size={18} />
-              </button>
-            </div>
+    <button 
+      onClick={() => {
+        const formSection = document.getElementById('form');
+        formSection?.scrollIntoView({ behavior: 'smooth' });
+      }}
+      className="w-full bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-full font-semibold transition flex items-center justify-center gap-2"
+    >
+      Get started <ChevronRight size={18} />
+    </button>
+  </div>
 
-            {/* Pro Plan with AI - Popular */}
-            <div className="glass rounded-3xl p-8 border-2 border-blue-500/50 relative overflow-hidden hover:border-blue-500 transition-all transform md:scale-105">
-              <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-600 to-cyan-600 text-white px-5 py-1.5 rounded-bl-2xl font-semibold text-sm">
-                Most Popular
-              </div>
-              
-              <div className="text-center mb-6 pt-3">
-                <h3 className="text-2xl font-bold mb-3">Pro + AI</h3>
-                <div className="flex items-end justify-center gap-2 mb-3">
-                  <span className="text-5xl font-bold gradient-text">139</span>
-                  <span className="text-xl text-gray-400 mb-2">TND/mo</span>
-                </div>
-                <p className="text-gray-400 text-sm">AI-powered insights</p>
-              </div>
+  {/* Pro Plan with AI - Popular */}
+  <div className="glass rounded-3xl p-8 border-2 border-blue-500/50 relative overflow-hidden hover:border-blue-500 transition-all transform md:scale-105">
+    <div className="absolute top-0 right-0 bg-gradient-to-br from-blue-600 to-cyan-600 text-white px-5 py-1.5 rounded-bl-2xl font-semibold text-sm">
+      Most Popular
+    </div>
+    
+    <div className="text-center mb-6 pt-3">
+      <h3 className="text-2xl font-bold mb-3">Pro + AI</h3>
+      <div className="flex items-end justify-center gap-2 mb-3">
+        <span className="text-5xl font-bold gradient-text">139</span>
+        <span className="text-xl text-gray-400 mb-2">TND/mo</span>
+      </div>
+      <p className="text-gray-400 text-sm">AI-powered insights</p>
+    </div>
 
-              <div className="space-y-3 mb-8">
-                {[
-                  { text: 'Everything in Basic, plus:', highlight: true },
-                  { text: '🤖 AI Analytics Agent', highlight: false, special: true },
-                  { text: 'AI business insights', highlight: false },
-                  { text: 'Auto recommendations', highlight: false },
-                  { text: 'Real-time notifications', highlight: false },
-                  { text: 'Advanced analytics', highlight: false },
-                  { text: 'Product management', highlight: false },
-                  { text: 'Custom branding', highlight: false },
-                  { text: 'Up to 50 tables', highlight: false }
-                ].map((feature, i) => (
-                  <div key={i} className={`flex items-start gap-2 ${feature.highlight ? 'font-semibold text-blue-400' : ''}`}>
-                    {feature.highlight ? (
-                      <Star className="text-blue-400 flex-shrink-0 mt-0.5" size={18} />
-                    ) : feature.special ? (
-                      <Star className="text-cyan-400 flex-shrink-0 mt-0.5 animate-pulse" size={18} />
-                    ) : (
-                      <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
-                    )}
-                    <span className={`text-sm ${feature.special ? 'text-cyan-300 font-semibold' : 'text-gray-300'}`}>
-                      {feature.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
+    <div className="space-y-3 mb-8">
+      {[
+        { text: 'Everything in Basic, plus:', highlight: true },
+        { text: '🤖 AI Analytics Agent', highlight: false, special: true },
+        { text: 'AI business insights', highlight: false },
+        { text: 'Auto recommendations', highlight: false },
+        { text: 'Real-time notifications', highlight: false },
+        { text: 'Advanced analytics', highlight: false },
+        { text: 'Product management', highlight: false },
+        { text: 'Custom branding', highlight: false },
+        { text: 'Up to 50 tables', highlight: false }
+      ].map((feature, i) => (
+        <div key={i} className={`flex items-start gap-2 ${feature.highlight ? 'font-semibold text-blue-400' : ''}`}>
+          {feature.highlight ? (
+            <Star className="text-blue-400 flex-shrink-0 mt-0.5" size={18} />
+          ) : feature.special ? (
+            <Star className="text-cyan-400 flex-shrink-0 mt-0.5 animate-pulse" size={18} />
+          ) : (
+            <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
+          )}
+          <span className={`text-sm ${feature.special ? 'text-cyan-300 font-semibold' : 'text-gray-300'}`}>
+            {feature.text}
+          </span>
+        </div>
+      ))}
+    </div>
 
-              <button 
-                onClick={() => {
-                  const formSection = document.getElementById('form');
-                  formSection?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 rounded-full font-semibold hover:scale-105 transition glow-btn flex items-center justify-center gap-2"
-              >
-                Start free trial <ChevronRight size={18} />
-              </button>
-            </div>
+    <button 
+      onClick={() => {
+        const formSection = document.getElementById('form');
+        formSection?.scrollIntoView({ behavior: 'smooth' });
+      }}
+      className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 rounded-full font-semibold hover:scale-105 transition glow-btn flex items-center justify-center gap-2"
+    >
+      Start free trial <ChevronRight size={18} />
+    </button>
+  </div>
 
-            {/* Customize Plan - New */}
-            <div className="glass rounded-3xl p-8 border border-purple-500/50 relative overflow-hidden hover:border-purple-500 transition-all">
-              <div className="absolute top-0 right-0 bg-gradient-to-br from-purple-600 to-pink-600 text-white px-5 py-1.5 rounded-bl-2xl font-semibold text-sm">
-                Premium
-              </div>
-              
-              <div className="text-center mb-6 pt-3">
-                <h3 className="text-2xl font-bold mb-3">Customize</h3>
-                <div className="flex items-end justify-center gap-2 mb-3">
-                  <span className="text-5xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">199</span>
-                  <span className="text-xl text-gray-400 mb-2">TND/mo</span>
-                </div>
-                <p className="text-gray-400 text-sm">Full customization power</p>
-              </div>
+  {/* Customize Plan - Custom Pricing */}
+  <div className="glass rounded-3xl p-8 border border-purple-500/50 relative overflow-hidden hover:border-purple-500 transition-all">
+    <div className="absolute top-0 right-0 bg-gradient-to-br from-purple-600 to-pink-600 text-white px-5 py-1.5 rounded-bl-2xl font-semibold text-sm">
+      Premium
+    </div>
+    
+    <div className="text-center mb-6 pt-3">
+      <h3 className="text-2xl font-bold mb-3">Customize</h3>
+      <div className="flex items-end justify-center gap-2 mb-3">
+        <span className="text-6xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">?</span>
+      </div>
+      <p className="text-gray-400 text-sm">Custom pricing based on needs</p>
+    </div>
 
-              <div className="space-y-3 mb-8">
-                {[
-                  { text: 'Everything in Pro, plus:', highlight: true },
-                  { text: '🎨 Custom table themes', highlight: false, special: true },
-                  { text: 'Upload custom photos', highlight: false, special: true },
-                  { text: 'Branded table designs', highlight: false },
-                  { text: 'Photo galleries', highlight: false },
-                  { text: 'Visual menu builder', highlight: false },
-                  { text: 'Multi-location support', highlight: false },
-                  { text: 'Priority support', highlight: false },
-                  { text: 'Unlimited tables', highlight: false }
-                ].map((feature, i) => (
-                  <div key={i} className={`flex items-start gap-2 ${feature.highlight ? 'font-semibold text-purple-400' : ''}`}>
-                    {feature.highlight ? (
-                      <Star className="text-purple-400 flex-shrink-0 mt-0.5" size={18} />
-                    ) : feature.special ? (
-                      <Star className="text-pink-400 flex-shrink-0 mt-0.5 animate-pulse" size={18} />
-                    ) : (
-                      <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
-                    )}
-                    <span className={`text-sm ${feature.special ? 'text-pink-300 font-semibold' : 'text-gray-300'}`}>
-                      {feature.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
+    <div className="space-y-3 mb-8">
+      {[
+        { text: 'Everything in Pro, plus:', highlight: true },
+        { text: '🎨 Custom table themes', highlight: false, special: true },
+        { text: 'Upload custom photos', highlight: false, special: true },
+        { text: 'Branded table designs', highlight: false },
+        { text: 'Photo galleries', highlight: false },
+        { text: 'Visual menu builder', highlight: false },
+        { text: 'Multi-location support', highlight: false },
+        { text: 'Priority support', highlight: false },
+        { text: 'Unlimited tables', highlight: false }
+      ].map((feature, i) => (
+        <div key={i} className={`flex items-start gap-2 ${feature.highlight ? 'font-semibold text-purple-400' : ''}`}>
+          {feature.highlight ? (
+            <Star className="text-purple-400 flex-shrink-0 mt-0.5" size={18} />
+          ) : feature.special ? (
+            <Star className="text-pink-400 flex-shrink-0 mt-0.5 animate-pulse" size={18} />
+          ) : (
+            <Check className="text-green-400 flex-shrink-0 mt-0.5" size={18} />
+          )}
+          <span className={`text-sm ${feature.special ? 'text-pink-300 font-semibold' : 'text-gray-300'}`}>
+            {feature.text}
+          </span>
+        </div>
+      ))}
+    </div>
 
-              <button 
-                onClick={() => {
-                  const formSection = document.getElementById('form');
-                  formSection?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 rounded-full font-semibold hover:scale-105 transition flex items-center justify-center gap-2"
-                style={{boxShadow: '0 0 30px rgba(168, 85, 247, 0.4)'}}
-              >
-                Contact us <ChevronRight size={18} />
-              </button>
-            </div>
-          </div>
+    <button 
+      onClick={() => {
+        const formSection = document.getElementById('form');
+        formSection?.scrollIntoView({ behavior: 'smooth' });
+      }}
+      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-3 rounded-full font-semibold hover:scale-105 transition flex items-center justify-center gap-2"
+      style={{boxShadow: '0 0 30px rgba(168, 85, 247, 0.4)'}}
+    >
+      Contact us <ChevronRight size={18} />
+    </button>
+  </div>
+</div>
 
           {/* Trial Info */}
           <div className="max-w-2xl mx-auto mt-12 reveal">

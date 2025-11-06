@@ -1,3 +1,4 @@
+
 import  { useEffect, useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { ArrowLeft } from 'lucide-react'; // or your icon libraryRéessayerClaude n'a pas encore la capacité d'exécuter le code qu'il génère.
@@ -6,7 +7,61 @@ import {
   Box,
   Button,
 } from '@mui/material';
+
 export default function AdminCharts() {
+  const responsiveStyles = `
+  @media (max-width: 768px) {
+    .charts-container {
+      padding: 16px !important;
+    }
+    
+    .header-section {
+      padding: 20px !important;
+      margin-bottom: 20px !important;
+    }
+    
+    .header-section h1 {
+      font-size: 1.75rem !important;
+    }
+    
+    .stats-grid {
+      grid-template-columns: 1fr !important;
+      gap: 16px !important;
+    }
+    
+    .stat-card {
+      padding: 16px !important;
+    }
+    
+    .stat-card .stat-title {
+      font-size: 2rem !important;
+    }
+    
+    .charts-grid {
+      grid-template-columns: 1fr !important;
+      gap: 16px !important;
+    }
+    
+    .chart-card {
+      padding: 16px !important;
+    }
+    
+    .chart-card h2 {
+      font-size: 1.125rem !important;
+    }
+  }
+  
+  @media (max-width: 500px) {
+    .header-section h1 {
+      font-size: 1.5rem !important;
+    }
+    
+    .stat-card .stat-title {
+      font-size: 1.5rem !important;
+    }
+  }
+`;
+
   const [salesData, setSalesData] = useState([]);
   const [revenueData, setRevenueData] = useState([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -37,19 +92,17 @@ export default function AdminCharts() {
       })
       .catch(err => console.error(err));
   }, []);
-
+  
   const COLORS = ['#3b82f6', '#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div style={{
-          background: 'white',
-          padding: '12px 16px',
-          borderRadius: '12px',
-          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.15)',
-          border: '1px solid #e2e8f0'
-        }}>
+        <div className="charts-container" style={{
+  padding: '32px',
+  background: 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)',
+  minHeight: '100vh'
+}}>
           <p style={{ fontWeight: '600', color: '#1e293b', marginBottom: '4px', fontSize: '14px' }}>{label}</p>
           <p style={{ color: '#3b82f6', fontWeight: '700', fontSize: '16px' }}>
             {payload[0].value} {payload[0].dataKey === 'revenue' ? 'DT' : 'unités'}
@@ -61,6 +114,7 @@ export default function AdminCharts() {
   };
 
   return (
+    
     <div style={{
       padding: '32px',
       background: 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)',
@@ -127,12 +181,12 @@ export default function AdminCharts() {
       </div>
 
       {/* Stats Cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-        gap: '24px',
-        marginBottom: '32px'
-      }}>
+     <div className="stats-grid" style={{
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: '24px',
+  marginBottom: '32px'
+}}>
         {/* Card 1 - Revenu Total */}
         <div style={{
           background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
@@ -255,12 +309,12 @@ export default function AdminCharts() {
       </div>
 
       {/* Charts Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))',
-        gap: '24px',
-        marginBottom: '24px'
-      }}>
+     <div className="charts-grid" style={{
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+  gap: '24px',
+  marginBottom: '24px'
+}}>
         {/* Bar Chart - Ventes par produit */}
         <div style={{
           background: 'white',
@@ -423,6 +477,7 @@ export default function AdminCharts() {
           </PieChart>
         </ResponsiveContainer>
       </div>
+      
     </div>
   );
 }

@@ -11,20 +11,20 @@ export default function ProtectedAdminDashboard() {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
-  const navigate=useNavigate()
-  // Vérifier le statut de paiement au chargement
+  const navigate = useNavigate();
+
+  // Check payment status on load
   useEffect(() => {
     checkPaymentStatus();
   }, []);
 
-   const checkPaymentStatus = async () => {
+  const checkPaymentStatus = async () => {
     setIsLoading(true);
     try {
-      // Remplacer par votre API call
       const response = await cafeApi.get(`${process.env.REACT_APP_API_URL}/api/checkPaymentStatus`);
-      console.log(response,'ze')
-      localStorage.setItem('path',`?id=${response.data.Cafe.id}`)
-      setIsPaid(response.data.status==="success"?true:false);
+      console.log(response, 'ze');
+      localStorage.setItem('path', `?id=${response.data.Cafe.id}`);
+      setIsPaid(response.data.status === "success" ? true : false);
       setUserPlan(response.data.Cafe.plan);
       setIsLoading(false);
     } catch (error) {
@@ -37,7 +37,6 @@ export default function ProtectedAdminDashboard() {
   const handlePayment = async (planName, price) => {
     setProcessingPayment(true);
     try {
-      // Simulation
       await new Promise(resolve => setTimeout(resolve, 1500));
       alert('Payment simulation - would redirect to payment gateway');
     } catch (error) {
@@ -48,6 +47,17 @@ export default function ProtectedAdminDashboard() {
     }
   };
 
+  const handleCardClick = (item) => {
+    // Check if it's the AI Agent and user has Basic plan
+    if (item.id === 5 && userPlan === 'basic') {
+      // Show upgrade modal or message
+      alert('⭐ AI Agent is a Pro feature! Upgrade to Pro plan to unlock this feature.');
+      return;
+    }
+    // Navigate normally for other items or VIP users
+    navigate(`${item.path}`);
+  };
+
   const menuItems = [
     {
       id: 1,
@@ -56,7 +66,8 @@ export default function ProtectedAdminDashboard() {
       path: '/admin/items',
       icon: Package,
       gradient: 'from-blue-500 to-blue-700',
-      glowColor: 'blue-500'
+      glowColor: 'blue-500',
+      requiredPlan: 'Basic' // Available for all
     },
     {
       id: 2,
@@ -65,7 +76,8 @@ export default function ProtectedAdminDashboard() {
       path: '/admin/charts',
       icon: TrendingUp,
       gradient: 'from-emerald-500 to-teal-600',
-      glowColor: 'emerald-500'
+      glowColor: 'emerald-500',
+      requiredPlan: 'Basic'
     },
     {
       id: 3,
@@ -74,7 +86,8 @@ export default function ProtectedAdminDashboard() {
       path: '/admin/orders',
       icon: ShoppingCart,
       gradient: 'from-purple-500 to-purple-700',
-      glowColor: 'purple-500'
+      glowColor: 'purple-500',
+      requiredPlan: 'Basic'
     },
     {
       id: 4,
@@ -83,7 +96,8 @@ export default function ProtectedAdminDashboard() {
       path: '/admin/waiters',
       icon: Users,
       gradient: 'from-amber-500 to-orange-600',
-      glowColor: 'amber-500'
+      glowColor: 'amber-500',
+      requiredPlan: 'Basic'
     },
     {
       id: 5,
@@ -92,7 +106,8 @@ export default function ProtectedAdminDashboard() {
       path: '/admin/agent',
       icon: Sparkles,
       gradient: 'from-indigo-500 to-indigo-700',
-      glowColor: 'indigo-500'
+      glowColor: 'indigo-500',
+      requiredPlan: 'VIP' // VIP only
     },
     {
       id: 6,
@@ -101,7 +116,8 @@ export default function ProtectedAdminDashboard() {
       path: '/admin/qrcode',
       icon: QrCode,
       gradient: 'from-pink-500 to-rose-600',
-      glowColor: 'pink-500'
+      glowColor: 'pink-500',
+      requiredPlan: 'Basic'
     }
   ];
 
@@ -121,7 +137,12 @@ export default function ProtectedAdminDashboard() {
     }
   ];
 
-  // Écran de chargement
+  // Check if a feature is locked
+  const isFeatureLocked = (item) => {
+    return item.requiredPlan === 'VIP' && userPlan === 'Basic';
+  };
+
+  // Loading screen
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
@@ -133,7 +154,7 @@ export default function ProtectedAdminDashboard() {
     );
   }
 
-  // Écran de paiement requis
+  // Payment required screen
   if (!isPaid) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
@@ -278,7 +299,7 @@ export default function ProtectedAdminDashboard() {
     );
   }
 
-  // Dashboard Normal (après paiement)
+  // Normal Dashboard (after payment)
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-8">
       {/* Animated Background Elements */}
@@ -290,7 +311,6 @@ export default function ProtectedAdminDashboard() {
 
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header Section */}
-       {/* Header Section */}
         <div className="mb-16 animate-fadeIn">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -303,6 +323,17 @@ export default function ProtectedAdminDashboard() {
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
                     <span className="text-emerald-400 text-xs md:text-sm font-medium">System Online</span>
                   </div>
+                  {/* Plan Badge */}
+                  <div className={`flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full border ${
+                    userPlan === 'VIP' 
+                      ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 border-purple-500/30' 
+                      : 'bg-blue-600/20 border-blue-500/30'
+                  }`}>
+                    <Star size={14} className={userPlan === 'VIP' ? 'text-purple-400' : 'text-blue-400'} fill="currentColor" />
+                    <span className={`text-xs md:text-sm font-medium ${userPlan === 'VIP' ? 'text-purple-400' : 'text-blue-400'}`}>
+                      {userPlan} Plan
+                    </span>
+                  </div>
                 </div>
                 <h1 className="text-3xl md:text-5xl font-bold text-white tracking-tight">
                   Admin Dashboard
@@ -313,14 +344,14 @@ export default function ProtectedAdminDashboard() {
               </div>
             </div>
 
-            {/* Disconnect Button - Now visible on mobile */}
+            {/* Disconnect Button */}
             {userPlan && (
               <div className="w-full md:w-auto">
                 <button
-                  onClick={()=>{
-                    axios.post(process.env.REACT_APP_API_URL+'/logout')
-                    localStorage.clear()
-                    navigate('/login')
+                  onClick={() => {
+                    axios.post(process.env.REACT_APP_API_URL + '/logout');
+                    localStorage.clear();
+                    navigate('/login');
                   }}
                   className="w-full md:w-auto bg-gradient-to-r from-red-600 to-red-600 px-6 py-3 rounded-full shadow-lg text-white font-semibold hover:from-red-700 hover:to-red-700 transition-all"
                 >
@@ -335,31 +366,54 @@ export default function ProtectedAdminDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           {menuItems.map((item, index) => {
             const Icon = item.icon;
+            const isLocked = isFeatureLocked(item);
+            
             return (
               <div
                 key={item.id}
-                onClick={() => navigate(`${item.path}`)}
-                onMouseEnter={() => setHoveredCard(item.id)}
+                onClick={() => handleCardClick(item)}
+                onMouseEnter={() => !isLocked && setHoveredCard(item.id)}
                 onMouseLeave={() => setHoveredCard(null)}
-                className="group relative cursor-pointer"
+                className={`group relative ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                 style={{
                   animation: `slideUp 0.6s ease-out ${index * 0.1}s both`
                 }}
               >
-                <div className={`absolute -inset-0.5 bg-gradient-to-r ${item.gradient} rounded-2xl blur opacity-0 group-hover:opacity-30 transition duration-500`}></div>
+                <div className={`absolute -inset-0.5 bg-gradient-to-r ${item.gradient} rounded-2xl blur opacity-0 ${
+                  !isLocked && 'group-hover:opacity-30'
+                } transition duration-500`}></div>
                 
                 <div className={`relative h-full bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 transition-all duration-500 ${
-                  hoveredCard === item.id ? 'transform scale-105 shadow-2xl' : ''
+                  isLocked ? 'opacity-60' : hoveredCard === item.id ? 'transform scale-105 shadow-2xl' : ''
                 }`}>
+                  {/* Locked Badge */}
+                  {isLocked && (
+                    <div className="absolute top-4 right-4 z-10">
+                      <div className="flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 rounded-full">
+                        <Lock className="w-3 h-3 text-amber-400" />
+                        <span className="text-xs font-medium text-amber-400">VIP Only</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className={`relative w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg transition-transform duration-500 ${
-                    hoveredCard === item.id ? 'rotate-12 scale-110' : ''
+                    !isLocked && hoveredCard === item.id ? 'rotate-12 scale-110' : ''
                   }`}>
                     <Icon className="w-10 h-10 text-white" />
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    {isLocked && (
+                      <div className="absolute inset-0 bg-slate-900/50 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                        <Lock className="w-6 h-6 text-white" />
+                      </div>
+                    )}
+                    <div className={`absolute inset-0 rounded-2xl bg-gradient-to-tr from-white/0 via-white/20 to-white/0 opacity-0 ${
+                      !isLocked && 'group-hover:opacity-100'
+                    } transition-opacity duration-500`}></div>
                   </div>
 
                   <div>
-                    <h3 className="text-2xl font-bold text-white mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-300 transition-all duration-300">
+                    <h3 className={`text-2xl font-bold text-white mb-2 transition-all duration-300 ${
+                      !isLocked && 'group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-white group-hover:to-slate-300'
+                    }`}>
                       {item.title}
                     </h3>
                     
@@ -367,13 +421,21 @@ export default function ProtectedAdminDashboard() {
                       {item.description}
                     </p>
 
-                    <div className={`flex items-center gap-2 text-slate-500 group-hover:text-white transition-all duration-300 ${
-                      hoveredCard === item.id ? 'translate-x-2' : ''
+                    <div className={`flex items-center gap-2 transition-all duration-300 ${
+                      isLocked 
+                        ? 'text-amber-400' 
+                        : `text-slate-500 group-hover:text-white ${hoveredCard === item.id ? 'translate-x-2' : ''}`
                     }`}>
-                      <span className="text-sm font-medium">View Details</span>
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
+                      <span className="text-sm font-medium">
+                        {isLocked ? 'Upgrade to Access' : 'View Details'}
+                      </span>
+                      {isLocked ? (
+                        <Star className="w-4 h-4" fill="currentColor" />
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
                     </div>
                   </div>
 
