@@ -88,11 +88,9 @@ useEffect(() => {
   });
 
   // Event listeners
-  // Event listeners
   const handleNewOrder = (data) => {
-    console.log(data,"zzz")
     setNotificationCount(prev => prev + 1);
-    setRefresh(!refresh)
+    setRefresh(prev => !prev);
   };
 
   const handleNewAlert = (data) => {
