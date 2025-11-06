@@ -73,7 +73,7 @@ function AdminItems() {
     axios.get(process.env.REACT_APP_API_URL+'/api/getPhotosPro',{
       headers:{'Authorization':'Bearer '+localStorage.getItem('token')}
     }).then(r=>{
-      console.log(r.data)
+     
       setCategoryImages(r.data)})
     .catch(err=>console.log(err))
   },[])

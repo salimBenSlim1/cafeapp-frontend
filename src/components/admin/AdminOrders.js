@@ -58,54 +58,72 @@ function AdminOrders() {
   const [printingOrder, setPrintingOrder] = useState(null);
   const ordersPerPage = 10;
   const printRef = useRef();
-
+  const [socket,setSocket]=useState(null)
   // Socket.io setup
- useEffect(() => {
+const socketRef = useRef(null);
+
+// Socket connection (once)
+// Separate useEffect for socket connection (runs once)
+
+// Socket connection (once)
+useEffect(() => {
   const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
-  const newSocket = io(SOCKET_URL, {
+  socketRef.current = io(SOCKET_URL, {
     reconnection: true,
     reconnectionDelay: 1000,
     transports: ['websocket'],
     withCredentials: true
   });
 
-  newSocket.on('connect', () => {
-    console.log('Socket connected:', newSocket.id);
-    const token = localStorage.getItem('token');
-    if (token) {
-      newSocket.emit('joinCafe', { cafeId: token });
-    }
+  socketRef.current.on('connect', () => {
+    console.log('Socket connected:', socketRef.current.id);
   });
 
-  newSocket.on('newAlert', (data) => {
+  socketRef.current.on('newAlert', (data) => {
     setAlerts((prev) => [...prev, data]);
   });
 
-  newSocket.on('newOrder', (order) => {
+  socketRef.current.on('newOrder', (order) => {
     console.log('New order received:', order);
     setNotificationCount((prev) => prev + 1);
-    setRefresh((prev) => !prev);
+    setRefresh(!refresh)
   });
 
-  newSocket.on('orderUpdated', (order) => {
+  socketRef.current.on('orderUpdated', (order) => {
     console.log('Order updated:', order);
-    setRefresh((prev) => !prev);
+    setOrders((prevOrders) =>
+      prevOrders.map((o) => (o.id === order.id ? order : o))
+    );
   });
 
   return () => {
-    if (newSocket.connected) newSocket.close();
+    if (socketRef.current?.connected) {
+      socketRef.current.close();
+    }
   };
 }, []);
 
-
-  useEffect(() => {
-    cafeApi.get(`/itemsEndSoon`)
-    .then(r => setAlerts(r.data))
-    .catch(err => {});
-    
-    cafeApi.get("/getOrders")
+// Fetch orders and join cafe room
+useEffect(() => {
+  cafeApi.get("/getOrders")
     .then((r) => {
-      console.log(r.data,'ddd')
+      const cafeId = r.data[0]?.cafeId;
+      console.log('Cafe ID:', cafeId);
+      
+      if (cafeId && socketRef.current) {
+        // Wait for socket to be connected before emitting
+        if (socketRef.current.connected) {
+          socketRef.current.emit('joinCafe', { cafeId });
+          console.log('Joined cafe room:', cafeId);
+        } else {
+          // If not connected yet, wait for connection
+          socketRef.current.once('connect', () => {
+            socketRef.current.emit('joinCafe', { cafeId });
+            console.log('Joined cafe room after connect:', cafeId);
+          });
+        }
+      }
+      
       const filteredData = r.data.filter((e) => {
         const status = e.status;
         const orderDate = new Date(e.createdAt);
@@ -126,11 +144,12 @@ function AdminOrders() {
 
         return false;
       });
+      
       setOrders(filteredData);
       setCurrentPage(1);
     })
     .catch((err) => console.log(err));
-  }, [refresh, viewMode]);
+}, [viewMode]);
 
 const handlePrintReceipt = (order) => {
     // Create a new window for printing
