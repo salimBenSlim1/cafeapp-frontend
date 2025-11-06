@@ -23,11 +23,11 @@ const GetInfos = () => {
     const [addingPaymentFor, setAddingPaymentFor] = useState(null)
     const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash', status: 'success' })
     const navigate = useNavigate()
-    
+    const [refresh,setRefresh]=useState(false)
     useEffect(() => {
         fetchPendingForms()
         fetchCafes()
-    }, [])
+    }, [refresh])
 
     const fetchPendingForms = () => {
         axios.get(`${process.env.REACT_APP_API_URL}/getForms`,{headers:{'token-jwt':localStorage.getItem('adminToken')}})
@@ -126,7 +126,11 @@ const GetInfos = () => {
                 }
             })
     }
-
+    const handleDelteForm=(id)=>{
+        axios.delete(process.env.REACT_APP_API_URL+'/delete-form/'+id,{headers:{'token-jwt':localStorage.getItem('adminToken')}})
+        .then(r=>setRefresh(!refresh))
+        .catch(err=>console.log(err))
+    }
     const handleUpdateapiKeyExpiresAt = (cafeId, newDate) => {
         axios.put(`${process.env.REACT_APP_API_URL}/updateCreatedAt/${cafeId}`, { createdAt: newDate },{headers:{'token-jwt':localStorage.getItem('adminToken')}})
             .then(() => {
@@ -254,12 +258,15 @@ const GetInfos = () => {
                 <h3 className="text-lg font-bold text-white mb-3 flex items-center gap-2">
                     <Coffee className="w-4 h-4 text-blue-400" />
                     {e.nomCafe}
+                    <span className='text-red-600 cursor-pointer'
+                    onClick={()=>handleDelteForm(e.id)}>X</span>
                 </h3>
                 
                 <div className="space-y-2 text-sm">
                     <div className="flex items-center gap-2 text-gray-300">
                         <User className="w-4 h-4 text-blue-400" />
                         {e.nomPerson}
+
                     </div>
                     <div className="flex items-center gap-2 text-gray-300">
                         <Mail className="w-4 h-4 text-blue-400" />
