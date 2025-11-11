@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -13,8 +12,6 @@ import QRCodesDashboard from './components/admin/QRCodesDashboard';
 import AdminCharts from './components/admin/AdminCharts';
 import AdminAgent from './components/admin/AdminAgent';
 import UserOrderPage from './components/user/UserOrderPage';
-import PaymentSuccess from './components/Success';
-import PaymentFailed from './components/Failed';
 import AdminLogin from './components/getInfos/LoginAdmin';
 import ManageWaiters from './components/admin/AdminMangeWaiter';
 import ServerLogin from './components/server/ServerLogin';
@@ -68,8 +65,6 @@ function App() {
           {/* Add your customer-facing routes here */}
 
           <Route path="/client-panier" element={<UserOrderPage />} />
-          <Route path="/success" element={<PaymentSuccess />} />
-          <Route path="/cancel" element={<PaymentFailed />} />
           <Route path="/server-login" element={<ServerLogin />} />
           <Route path="/server-dashboard" element={<ServerDashboard />} />
           
