@@ -8,7 +8,7 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
   const [messages, setMessages] = useState([
     {
       id: '1',
-      text: "Hello! 👋 I'm Alex, your personal AI waiter at CoffAI! How can I help you today?",
+      text: "Hello! 👋 I'm Alex, your personal AI waiter ! How can I help you today?",
       sender: 'bot',
       timestamp: new Date(),
       options: [
@@ -31,7 +31,7 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
       const timer = setTimeout(() => {
         setShowWelcome(false);
         sessionStorage.setItem('hasSeenWelcome', 'true');
-      }, 6000);
+      }, 3000);
       return () => clearTimeout(timer);
     } else {
       setShowWelcome(false);
@@ -167,7 +167,7 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
 
     // Order help
     if (lowerMessage.match(/\b(order|checkout|cart|buy)\b/) || userMessage === 'order' || userMessage === 'checkout') {
-      response.text = "To place an order:\n\n1️⃣ Browse items and click 'Add to Cart'\n2️⃣ Click the 🛒 cart icon (bottom right)\n3️⃣ Review and place your order\n\nNeed help finding something?";
+      response.text = "To place an order:\n\n1️⃣ Browse items and click \n'+ Add'\n2️⃣ Click the 🛒 cart icon (bottom right)\n3️⃣ Review and place your order\n\nNeed help finding something?";
       response.options = [
         { id: 'menu', text: 'Browse Menu', icon: '📋' },
         { id: 'recommend', text: 'Get Recommendations', icon: '⭐' },
@@ -213,7 +213,7 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
 
     // Goodbye
     if (lowerMessage.match(/\b(bye|goodbye)\b/)) {
-      response.text = "Enjoy your meal at CoffAI! 👋 Feel free to chat anytime!";
+      response.text = "Enjoy your meal ! 👋 Feel free to chat anytime!";
       return response;
     }
 
@@ -389,7 +389,7 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
                   transition={{ delay: 0.9, duration: 0.5 }}
                   className="text-xl sm:text-2xl text-purple-200 font-medium"
                 >
-                  Your AI Waiter at CoffAI
+                  Your AI Waiter
                 </motion.p>
                 
                 <motion.p
@@ -475,7 +475,7 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.8 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-64 sm:bottom-72 right-6 sm:right-8 w-[calc(100vw-3rem)] sm:w-96 h-[500px] bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
+            className="fixed inset-x-4 bottom-64 sm:bottom-72 sm:right-8 sm:left-auto top-4 sm:top-auto sm:w-96 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 flex items-center gap-3">
