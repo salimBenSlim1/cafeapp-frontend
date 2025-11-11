@@ -12,10 +12,10 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
       sender: 'bot',
       timestamp: new Date(),
       options: [
-        { id: 'menu', text: '📋 Browse Menu', icon: '📋' },
-        { id: 'recommend', text: '⭐ Get Recommendations', icon: '⭐' },
-        { id: 'popular', text: '🔥 Popular Items', icon: '🔥' },
-        { id: 'order', text: '🛒 How to Order', icon: '🛒' }
+        { id: 'menu', text: ' Browse Menu', icon: '📋' },
+        { id: 'recommend', text: ' Get Recommendations', icon: '⭐' },
+        { id: 'popular', text: ' Popular Items', icon: '🔥' },
+        { id: 'order', text: ' How to Order', icon: '🛒' }
       ]
     }
   ]);
