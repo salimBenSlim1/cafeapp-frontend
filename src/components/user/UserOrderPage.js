@@ -49,7 +49,7 @@ function UserOrderPage() {
       localStorage.setItem('userOrders', JSON.stringify(orders));
     }
   }, [orders]);
-
+  const [cafeName,setCafeName]=useState(null)
   useEffect(() => {
     const initializeSession = async () => {
       try {
@@ -60,6 +60,7 @@ function UserOrderPage() {
             const response = await axios.get(`${API_BASE}/getUserItems`, {
               headers: { 'Authorization': `Bearer ${existingToken}` }
             });
+            setCafeName(response?.data[0]?.Cafe?.name)
             setProducts(response.data);
             setFilteredProducts(response.data);
             setSessionActive(true);
@@ -175,6 +176,7 @@ function UserOrderPage() {
       const response = await axios.get(`${API_BASE}/getUserItems`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
       });
+      console.log('first',response.data)
       setProducts(response.data);
       setFilteredProducts(response.data);
       setSessionActive(true);
@@ -308,7 +310,7 @@ function UserOrderPage() {
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
             <h1 className="text-3xl font-bold text-white mb-4">Session Expired</h1>
             <p className="text-blue-200 text-lg mb-6">
-              Your session has expired. Thank you for using CoffAI!
+              Your session has expired. Thank you for using {cafeName}!
             </p>
             <p className="text-slate-300 text-sm mb-4">
               See you next time! 👋
@@ -411,7 +413,7 @@ function UserOrderPage() {
             <div className="flex items-center gap-4">
               <img src="/images/coffAI.png" alt="CoffAI Logo" className="w-16 h-16" />
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">CoffAI Menu</h1>
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">{cafeName} Menu</h1>
                 <p className="text-blue-300 text-sm md:text-base">Table {sessionStorage.getItem('tai') || 'N/A'}</p>
               </div>
             </div>
