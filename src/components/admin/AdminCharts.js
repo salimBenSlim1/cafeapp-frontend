@@ -95,16 +95,18 @@ export default function AdminCharts() {
   
   const COLORS = ['#3b82f6', '#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-  const CustomTooltip = ({ active, payload, label }) => {
+ const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
       return (
-        <div className="charts-container" style={{
-  padding: '32px',
-  background: 'linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%)',
-  minHeight: '100vh'
-}}>
-          <p style={{ fontWeight: '600', color: '#1e293b', marginBottom: '4px', fontSize: '14px' }}>{label}</p>
-          <p style={{ color: '#3b82f6', fontWeight: '700', fontSize: '16px' }}>
+        <div style={{
+          padding: '12px 16px',
+          background: 'rgba(255, 255, 255, 0.98)',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+        }}>
+          <p style={{ fontWeight: '600', color: '#1e293b', marginBottom: '4px', fontSize: '14px', margin: 0 }}>{label}</p>
+          <p style={{ color: '#3b82f6', fontWeight: '700', fontSize: '16px', margin: 0 }}>
             {payload[0].value} {payload[0].dataKey === 'revenue' ? 'DT' : 'unités'}
           </p>
         </div>
@@ -112,7 +114,6 @@ export default function AdminCharts() {
     }
     return null;
   };
-
   return (
     
     <div style={{

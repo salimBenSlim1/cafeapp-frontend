@@ -38,13 +38,27 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
     }
   }, []);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+const scrollToMessageTop = () => {
+  const chatContainer = document.querySelector('.chat-messages-container');
+  if (chatContainer) {
+    chatContainer.scrollTop = 0;
+  }
+};
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+useEffect(() => {
+  // Whenever a new message is added
+  const lastMessage = messages[messages.length - 1];
+  const chatContainer = document.querySelector('.chat-messages-container');
+
+  if (lastMessage?.sender === 'bot' && chatContainer) {
+    // Scroll to top smoothly when bot replies
+    chatContainer.scrollTo({ top: 0, behavior: 'smooth' });
+  } else if (chatContainer) {
+    // Otherwise keep normal bottom scroll
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+  }
+}, [messages]);
+
 
   useEffect(() => {
     if (!isOpen && messages.length > 1 && messages[messages.length - 1].sender === 'bot') {
@@ -492,7 +506,7 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/50">
+ <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/50 chat-messages-container">
               {messages.map((message, index) => (
                 <motion.div
                   key={message.id}
