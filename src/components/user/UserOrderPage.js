@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Plus, Minus, X, Receipt, CheckCircle, AlertCircle } from 'lucide-react';
+import { ShoppingCart, Search, Plus, Minus, X, Receipt, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -23,6 +23,7 @@ function UserOrderPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [addedToCart, setAddedToCart] = useState(null);
+  const [orderComment, setOrderComment] = useState('');
 
   const API_BASE = process.env.REACT_APP_API_URL;
   const location = useLocation();
@@ -245,7 +246,8 @@ function UserOrderPage() {
     setOrderLoading(true);
 
     const payload = {
-      items: cart.map(i => ({ itemId: i.id, quantity: i.quantity }))
+      items: cart.map(i => ({ itemId: i.id, quantity: i.quantity })),
+      comment: orderComment.trim() || null
     };
 
     const newOrder = {
@@ -253,7 +255,8 @@ function UserOrderPage() {
       date: new Date().toISOString().slice(0, 16).replace('T', ' '),
       items: cart.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
       total: getTotalPrice(),
-      status: 'pending'
+      status: 'pending',
+      comment: orderComment.trim() || null
     };
 
     setOrders(prevOrders => [...prevOrders, newOrder]);
@@ -275,6 +278,7 @@ function UserOrderPage() {
 
       setRefresh(!refresh);
       setCart([]);
+      setOrderComment('');
       setOrderSuccess(true);
       
       setTimeout(() => {
@@ -580,6 +584,25 @@ function UserOrderPage() {
                       </div>
                     ))}
                     
+                    {/* Comment Section */}
+                    <div className="mt-4 mb-4">
+                      <label className="flex items-center gap-2 text-slate-300 text-sm font-medium mb-2">
+                        <MessageSquare size={16} className="text-blue-400" />
+                        Add a note (optional)
+                      </label>
+                      <textarea
+                        value={orderComment}
+                        onChange={(e) => setOrderComment(e.target.value)}
+                        placeholder="Any special requests or preferences?"
+                        maxLength={200}
+                        className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                        rows={3}
+                      />
+                      <p className="text-xs text-slate-500 mt-1 text-right">
+                        {orderComment.length}/200
+                      </p>
+                    </div>
+                    
                     <div className="mt-6">
                       <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-4 sm:p-5 rounded-xl">
                         <p className="text-lg sm:text-xl font-bold">Total: {getTotalPrice().toFixed(2)} TnD</p>
@@ -610,7 +633,7 @@ function UserOrderPage() {
 
         {showConfirmation && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full shadow-2xl animate-scaleIn">
+            <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full shadow-2xl animate-scaleIn max-h-[90vh] overflow-y-auto">
               <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 rounded-t-2xl">
                 <AlertCircle size={48} className="text-white mx-auto mb-3" />
                 <h2 className="text-2xl font-bold text-white text-center">Confirm Order</h2>
@@ -621,7 +644,7 @@ function UserOrderPage() {
                   Are you sure you want to place this order?
                 </p>
                 
-                <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 mb-6">
+                <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 mb-4">
                   <div className="space-y-2 mb-3">
                     {cart.map((item) => (
                       <div key={item.id} className="flex justify-between text-sm">
@@ -641,6 +664,19 @@ function UserOrderPage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Display comment if added */}
+                {orderComment.trim() && (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
+                    <div className="flex items-start gap-2">
+                      <MessageSquare size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs text-blue-300 font-medium mb-1">Your Note:</p>
+                        <p className="text-sm text-slate-200 italic">"{orderComment}"</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-3">
                   <button
@@ -719,6 +755,20 @@ function UserOrderPage() {
                             </p>
                           ))}
                         </div>
+                        
+                        {/* Display comment in orders list */}
+                        {order.comment && (
+                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-3">
+                            <div className="flex items-start gap-2">
+                              <MessageSquare size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                              <div className="flex-1">
+                                <p className="text-[10px] sm:text-xs text-blue-300 font-medium mb-1">Note:</p>
+                                <p className="text-xs sm:text-sm text-slate-200 italic">"{order.comment}"</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
                         <div className="border-t border-slate-700 pt-3">
                           <p className="font-bold text-emerald-400 text-right text-sm sm:text-base">
                             Total: {order.total.toFixed(2)} TnD

@@ -506,6 +506,7 @@ const handlePrintReceipt = (order) => {
                           </div>
                         ))}
                       </TableCell>
+                      
                       <TableCell className="table-cell price-cell">
                         {order.totalPrice.toFixed(2)} TnD
                       </TableCell>
@@ -594,27 +595,62 @@ const handlePrintReceipt = (order) => {
                         </>
                       ) : (
                         <>
-                          <ListItemText
-                            primary={`${item.quantity}x ${item.Item.name}`}
-                            secondary={`${(item.quantity * item.price).toFixed(2)} TnD`}
-                            className="item-text"
-                          />
-                          <ListItemSecondaryAction>
-                            <IconButton
-                              edge="end"
-                              onClick={() => handleEditItem(item)}
-                              className="action-button edit-icon"
-                            >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton
-                              edge="end"
-                              onClick={() => handleDeleteClick(item)}
-                              className="action-button delete-icon"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </ListItemSecondaryAction>
+                <ListItem
+  sx={{
+    py: 2,
+    px: 2,
+    borderBottom: '1px solid rgba(0,0,0,0.1)',
+    display: 'grid',
+    gridTemplateColumns: '250px 1fr auto', // left fixed, middle flexible, right auto for buttons
+    gap: 2,
+    alignItems: 'start', // align top for multiline comment
+  }}
+>
+  {/* Left: item name + price */}
+  <ListItemText
+    primary={`${item.quantity}x ${item.Item.name}`}
+    secondary={`${(item.quantity * item.price).toFixed(2)} TnD`}
+    className="item-text"
+  />
+
+  {/* Middle: comment */}
+  <TextField
+    type="text"
+    value={item?.comment || ''}
+    size="small"
+    variant="outlined"
+    disabled
+    multiline
+    maxRows={5}
+    fullWidth
+    InputProps={{
+      readOnly: true,
+      style: {
+        overflow: 'hidden',
+        whiteSpace: 'pre-wrap', // preserve line breaks
+        wordWrap: 'break-word',
+        padding: '8px',
+      },
+    }}
+  />
+
+  {/* Right: buttons */}
+  <Box sx={{ display: 'flex', gap: 1 }}>
+    <IconButton
+      onClick={() => handleEditItem(item)}
+      className="action-button edit-icon"
+    >
+      <EditIcon />
+    </IconButton>
+    <IconButton
+      onClick={() => handleDeleteClick(item)}
+      className="action-button delete-icon"
+    >
+      <DeleteIcon />
+    </IconButton>
+  </Box>
+</ListItem>
+
                         </>
                       )}
                     </ListItem>

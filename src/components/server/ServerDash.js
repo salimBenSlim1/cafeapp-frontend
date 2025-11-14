@@ -599,6 +599,8 @@ const handleRowClick = (order) => {
     </div>
   ))}
 </TableCell>
+
+                     
                       <TableCell className="table-cell price-cell">
                         {order.totalPrice.toFixed(2)} TnD
                       </TableCell>
@@ -736,20 +738,50 @@ const handleRowClick = (order) => {
                 </>
               ) : (
                 <>
-                  <ListItemText
-                    primary={`${item.quantity}x ${item.Item.name}`}
-                    secondary={`${(item.quantity * item.price).toFixed(2)} TnD`}
-                    className="item-text"
-                  />
-                  <ListItemSecondaryAction>
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleEditItem(item)}
-                      className="action-button edit-icon"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </ListItemSecondaryAction>
+                 <ListItem 
+  sx={{ 
+    py: 2,
+    px: 2,
+    borderBottom: '1px solid rgba(0,0,0,0.1)',
+    display: 'grid',
+    gridTemplateColumns: '250px 1fr 60px',
+    gap: 2,
+    alignItems: 'center'
+  }}
+>
+  <ListItemText
+    primary={`${item.quantity}x ${item.Item.name}`}
+    secondary={`${(item.quantity * item.price).toFixed(2)} TnD`}
+    className="item-text"
+  />
+  
+<TextField
+  type="text"
+  value={item?.comment || ''}
+  size="small"
+  variant="outlined"
+  disabled
+  multiline
+  maxRows={5}       // optional, limits height
+  fullWidth={false} // optional, remove if you want it to shrink to content
+  InputProps={{
+    readOnly: true,
+    style: { 
+      overflow: 'hidden', 
+      whiteSpace: 'pre-wrap',  // preserve line breaks
+      wordWrap: 'break-word',  // wrap long words
+      padding: '8px',          // adjust padding if needed
+    },
+  }}
+/>
+  
+  <IconButton
+    onClick={() => handleEditItem(item)}
+    className="action-button edit-icon"
+  >
+    <EditIcon />
+  </IconButton>
+</ListItem>
                 </>
               )}
             </ListItem>
