@@ -16,6 +16,7 @@ import AdminLogin from './components/getInfos/LoginAdmin';
 import ManageWaiters from './components/admin/AdminMangeWaiter';
 import ServerLogin from './components/server/ServerLogin';
 import ServerDashboard from './components/server/ServerDash';
+import PrinterManager from './components/admin/AdminPrinters';
 
 // Create a custom theme
 const theme = createTheme({
@@ -62,6 +63,7 @@ function App() {
           <Route path="/admin/charts" element={<AdminCharts />} />
           <Route path="/admin/agent" element={<AdminAgent />} />
           <Route path="/admin/waiters" element={<ManageWaiters />} />
+          <Route path="/admin/printers" element={<PrinterManager />} />
           {/* Add your customer-facing routes here */}
 
           <Route path="/client-panier" element={<UserOrderPage />} />
