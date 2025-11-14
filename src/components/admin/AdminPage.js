@@ -345,20 +345,30 @@ export default function ProtectedAdminDashboard() {
             </div>
 
             {/* Disconnect Button */}
-            {userPlan && (
-              <div className="w-full md:w-auto">
-                <button
-                  onClick={() => {
-                    axios.post(process.env.REACT_APP_API_URL + '/logout');
-                    localStorage.clear();
-                    navigate('/login');
-                  }}
-                  className="w-full md:w-auto bg-gradient-to-r from-red-600 to-red-600 px-6 py-3 rounded-full shadow-lg text-white font-semibold hover:from-red-700 hover:to-red-700 transition-all"
-                >
-                  Disconnect
-                </button>
-              </div>
-            )}
+           {/* Disconnect + Settings Buttons */}
+{userPlan && (
+  <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+    <button
+      onClick={() => {
+        axios.post(process.env.REACT_APP_API_URL + '/logout');
+        localStorage.clear();
+        navigate('/login');
+      }}
+      className="w-full md:w-auto bg-gradient-to-r from-red-600 to-red-600 px-6 py-3 rounded-full shadow-lg text-white font-semibold hover:from-red-700 hover:to-red-700 transition-all"
+    >
+      Disconnect
+    </button>
+
+    <button
+      onClick={() => navigate('/admin/printers')}
+      className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 rounded-full shadow-lg text-white font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all flex items-center justify-center gap-2"
+    >
+      <LayoutDashboard className="w-5 h-5" />
+      Manage Printers
+    </button>
+  </div>
+)}
+
           </div>
         </div>
 
