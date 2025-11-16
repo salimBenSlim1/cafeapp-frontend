@@ -64,13 +64,48 @@ function ServerDash() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   
   const ordersPerPage = 10;
+  const audioRef = useRef(null);
   const printRef = useRef();
-
+useEffect(() => {
+  // Create and configure audio element
+  audioRef.current = new Audio();
+  
+  // Option 1: Use a notification sound URL (recommended)
+  // You can use any of these free notification sounds:
+  audioRef.current.src = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'; // Positive notification
+  // OR use: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3' // Bell notification
+  // OR use: 'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3' // Success notification
+  
+  audioRef.current.volume = 0.5; // Set volume (0.0 to 1.0)
+  
+  // Preload the audio
+  audioRef.current.load();
+  
+  return () => {
+    // Cleanup
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+  };
+}, []);
+const playNotificationSound = () => {
+  if (audioRef.current) {
+    // Reset audio to start
+    audioRef.current.currentTime = 0;
+    
+    // Play the sound
+    audioRef.current.play().catch(error => {
+      console.log('Audio play failed:', error);
+      // Browser might block autoplay, this is normal
+    });
+  }
+};
   // Socket.io setup
 useEffect(() => {
   const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
   const newSocket = io(SOCKET_URL, {
-    transports: ['websocket'], // polling غير ضروري غالبًا
+    transports: ['websocket'],
     reconnection: true,
     reconnectionDelay: 1000,
     reconnectionDelayMax: 5000,
@@ -79,7 +114,6 @@ useEffect(() => {
     upgrade: true,
   });
 
-  // Emit joinCafe بعد ما socket يتصل
   newSocket.on('connect', () => {
     const cafeId = localStorage.getItem('cafeId');
     if (cafeId) {
@@ -87,10 +121,12 @@ useEffect(() => {
     }
   });
 
-  // Event listeners
   const handleNewOrder = (data) => {
     setNotificationCount(prev => prev + 1);
     setRefresh(prev => !prev);
+    
+    // Play notification sound
+    playNotificationSound();
   };
 
   const handleNewAlert = (data) => {
@@ -107,7 +143,6 @@ useEffect(() => {
   newSocket.on('newAlert', handleNewAlert);
   newSocket.on('orderStatusUpdated', handleOrderStatusUpdated);
 
-  // Cleanup
   return () => {
     newSocket.off('newOrder', handleNewOrder);
     newSocket.off('newAlert', handleNewAlert);
@@ -116,7 +151,7 @@ useEffect(() => {
       newSocket.disconnect();
     }
   };
-}, []); // empty dependency array
+}, []);
 
 
   const navigate = useNavigate();

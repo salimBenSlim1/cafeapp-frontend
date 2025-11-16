@@ -1,4 +1,5 @@
-import  { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+import cafeApi from '../../api/cafeApiInstance';
 import {
   Box,
   TextField,
@@ -12,13 +13,12 @@ import {
   ListItemText
 } from '@mui/material';
 import { Edit, Delete } from '@mui/icons-material';
-import cafeApi from '../../api/cafeApiInstance';
 
 const PRINTER_TYPES = ['bar', 'chicha', 'cuisine', 'dessert', 'caisse'];
 
 export default function PrinterManager() {
   const [printers, setPrinters] = useState([]);
-  const [form, setForm] = useState({ ipAddress: '', type: 'bar'});
+  const [form, setForm] = useState({ ipAddress: '', type: 'bar'  });
   const [editingId, setEditingId] = useState(null);
 
   const fetchPrinters = async () => {
@@ -45,7 +45,7 @@ export default function PrinterManager() {
       } else {
         await cafeApi.post('/addPrinter', form);
       }
-      setForm({ ipAddress: '', type: 'bar' });
+      setForm({ ipAddress: '', type: 'bar',  });
       setEditingId(null);
       fetchPrinters();
     } catch (err) {
@@ -118,7 +118,7 @@ export default function PrinterManager() {
             >
               <ListItemText
                 primary={`${p.type} - ${p.ipAddress}`}
-                
+              
               />
             </ListItem>
           ))}

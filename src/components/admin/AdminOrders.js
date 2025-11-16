@@ -132,124 +132,39 @@ function AdminOrders() {
     .catch((err) => console.log(err));
   }, [refresh, viewMode]);
 
-const handlePrintReceipt = (order) => {
-    // Create a new window for printing
-    const printWindow = window.open('', '', 'width=302,height=600');
+const handlePrintReceipt = async (order) => {
+  try {
+    // Call backend API to get print jobs
+   const response = await cafeApi.post(
+  '/print-order',
+  { orderId: order.id }, // request body
+  {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  }
+);
+
     
-    const receiptHTML = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Receipt</title>
-        <style>
-          @page {
-            size: 80mm auto;
-            margin: 0;
-          }
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            width: 80mm;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            padding: 5mm;
-          }
-          .center {
-            text-align: center;
-          }
-          .bold {
-            font-weight: bold;
-          }
-          .header {
-            border-bottom: 2px dashed #000;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-          }
-          .section {
-            margin-bottom: 8px;
-          }
-          .divider {
-            border-bottom: 1px dashed #000;
-            margin: 8px 0;
-          }
-          .items {
-            margin: 8px 0;
-          }
-          .item-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-          }
-          .total {
-            border-top: 2px dashed #000;
-            padding-top: 8px;
-            margin-top: 8px;
-            font-size: 14px;
-          }
-          .footer {
-            margin-top: 10px;
-            border-top: 2px dashed #000;
-            padding-top: 8px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header center">
-          <div class="bold" style="font-size: 16px;">CAFÉ</div>
-          <div style="font-size: 14px;">CASH RECEIPT</div>
-          <div style="margin-top: 4px;">------------------------</div>
-          <div>${new Date().toLocaleDateString('fr-TN')}</div>
-          <div>${new Date().toLocaleTimeString('fr-TN')}</div>
-        </div>
 
-        <div class="section">
-          <div class="bold">Table: ${order?.Table?.number}</div>
-          <div>Commande #${order.id}</div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="items">
-          <div class="bold" style="margin-bottom: 6px;">DESCRIPTION</div>
-          ${order.OrderItems.map(item => `
-            <div class="item-row">
-              <div>${item.quantity}x ${item.Item.name}</div>
-              <div>${(item.quantity * item.price).toFixed(3)} TND</div>
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="total">
-          <div class="item-row bold">
-            <div>TOTAL</div>
-            <div>${order.totalPrice.toFixed(3)} TND</div>
-          </div>
-        </div>
-
-        <div class="footer center">
-          <div class="bold" style="font-size: 14px; margin-bottom: 4px;">MERCI!</div>
-          <div>A bientôt</div>
-        </div>
-
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(function() {
-              window.close();
-            }, 100);
-          };
-        </script>
-      </body>
-      </html>
-    `;
+    if (!response.data.success) {
+      console.error('Failed to generate print jobs');
+      return;
+    }
     
-    printWindow.document.write(receiptHTML);
-    printWindow.document.close();
-  };
+    // Print each receipt with a small delay
+    response.data.printJobs.forEach((job, index) => {
+      setTimeout(() => {
+        const printWindow = window.open('', '', 'width=302,height=600');
+        printWindow.document.write(job.html);
+        printWindow.document.close();
+      }, index * 200); // 200ms delay between each print
+    });
+
+  } catch (error) {
+    console.error('Print error:', error);
+  }
+};
 
   const handleViewModeChange = (event, newMode) => {
     if (newMode !== null) {
