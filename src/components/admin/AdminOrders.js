@@ -38,6 +38,7 @@ import {
 import { io } from 'socket.io-client';
 import SuccessMessage from './SuccessAlert';
 import './AdminOrders.css';
+import SmartPrintDialog  from './MultiPrinterManager.js';
 
 import cafeApi from '../../api/cafeApiInstance';
 
@@ -56,6 +57,8 @@ function AdminOrders() {
   const [currentPage, setCurrentPage] = useState(1);
   const [alerts, setAlerts] = useState([]);
   const [printingOrder, setPrintingOrder] = useState(null);
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+const [orderToPrint, setOrderToPrint] = useState(null);
   const ordersPerPage = 10;
   const printRef = useRef();
 
@@ -132,38 +135,9 @@ function AdminOrders() {
     .catch((err) => console.log(err));
   }, [refresh, viewMode]);
 
-const handlePrintReceipt = async (order) => {
-  try {
-    // Call backend API to get print jobs
-   const response = await cafeApi.post(
-  '/print-order',
-  { orderId: order.id }, // request body
-  {
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  }
-);
-
-    
-
-    if (!response.data.success) {
-      console.error('Failed to generate print jobs');
-      return;
-    }
-    
-    // Print each receipt with a small delay
-    response.data.printJobs.forEach((job, index) => {
-      setTimeout(() => {
-        const printWindow = window.open('', '', 'width=302,height=600');
-        printWindow.document.write(job.html);
-        printWindow.document.close();
-      }, index * 200); // 200ms delay between each print
-    });
-
-  } catch (error) {
-    console.error('Print error:', error);
-  }
+const handlePrintReceipt = (order) => {
+  setOrderToPrint(order);
+  setShowPrintDialog(true);
 };
 
   const handleViewModeChange = (event, newMode) => {
@@ -603,8 +577,17 @@ const handlePrintReceipt = async (order) => {
           </DialogActions>
         </Dialog>
       </Box>
+         {showPrintDialog && orderToPrint && (
+        <SmartPrintDialog
+          order={orderToPrint}
+          onClose={() => {
+            setShowPrintDialog(false);
+            setOrderToPrint(null);
+          }}
+        />
+      )}
       {/* Print Receipt */}
-      {printingOrder && (
+      {/* {printingOrder && (
         <Box 
         ref={printRef}
         sx={{
@@ -696,8 +679,9 @@ const handlePrintReceipt = async (order) => {
               }
             `}
           </style>
+       
         </Box>
-      )}
+      )} */}
     </>
   );
 }

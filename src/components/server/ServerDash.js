@@ -42,6 +42,7 @@ import { io } from 'socket.io-client';
 import './ServerDash.css';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import   SmartPrintDialog  from '../admin/MultiPrinterManager';
 
 function ServerDash() {
   const [orders, setOrders] = useState([]);
@@ -62,7 +63,8 @@ function ServerDash() {
   // NEW: Loading states for each order
   const [loadingOrders, setLoadingOrders] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  
+  const [showPrintDialog, setShowPrintDialog] = useState(false);
+  const [orderToPrint, setOrderToPrint] = useState(null);
   const ordersPerPage = 10;
   const audioRef = useRef(null);
   const printRef = useRef();
@@ -191,123 +193,10 @@ useEffect(() => {
     });
   }, [refresh, viewMode]);
 
-  const handlePrintReceipt = (order) => {
-    const printWindow = window.open('', '', 'width=302,height=600');
-    
-    const receiptHTML = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Receipt</title>
-        <style>
-          @page {
-            size: 80mm auto;
-            margin: 0;
-          }
-          * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-          }
-          body {
-            width: 80mm;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            padding: 5mm;
-          }
-          .center {
-            text-align: center;
-          }
-          .bold {
-            font-weight: bold;
-          }
-          .header {
-            border-bottom: 2px dashed #000;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-          }
-          .section {
-            margin-bottom: 8px;
-          }
-          .divider {
-            border-bottom: 1px dashed #000;
-            margin: 8px 0;
-          }
-          .items {
-            margin: 8px 0;
-          }
-          .item-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-          }
-          .total {
-            border-top: 2px dashed #000;
-            padding-top: 8px;
-            margin-top: 8px;
-            font-size: 14px;
-          }
-          .footer {
-            margin-top: 10px;
-            border-top: 2px dashed #000;
-            padding-top: 8px;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header center">
-          <div class="bold" style="font-size: 16px;">CAFÉ</div>
-          <div style="font-size: 14px;">CASH RECEIPT</div>
-          <div style="margin-top: 4px;">------------------------</div>
-          <div>${new Date().toLocaleDateString('fr-TN')}</div>
-          <div>${new Date().toLocaleTimeString('fr-TN')}</div>
-        </div>
-
-        <div class="section">
-          <div class="bold">Table: ${order?.Table?.number}</div>
-          <div>Commande #${order.id}</div>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="items">
-          <div class="bold" style="margin-bottom: 6px;">DESCRIPTION</div>
-          ${order.OrderItems.map(item => `
-            <div class="item-row">
-              <div>${item.quantity}x ${item.Item.name}</div>
-              <div>${(item.quantity * item.price).toFixed(3)} TND</div>
-            </div>
-          `).join('')}
-        </div>
-
-        <div class="total">
-          <div class="item-row bold">
-            <div>TOTAL</div>
-            <div>${order.totalPrice.toFixed(3)} TND</div>
-          </div>
-        </div>
-
-        <div class="footer center">
-          <div class="bold" style="font-size: 14px; margin-bottom: 4px;">MERCI!</div>
-          <div>A bientôt</div>
-        </div>
-
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(function() {
-              window.close();
-            }, 100);
-          };
-        </script>
-      </body>
-      </html>
-    `;
-    
-    printWindow.document.write(receiptHTML);
-    printWindow.document.close();
-  };
+ const handlePrintReceipt = (order) => {
+  setOrderToPrint(order);
+  setShowPrintDialog(true);
+};
 
   const handleViewModeChange = (event, newMode) => {
     if (newMode !== null) {
@@ -831,6 +720,15 @@ const handleRowClick = (order) => {
     </>
   )}
 </Dialog>
+ {showPrintDialog && orderToPrint && (
+        <SmartPrintDialog
+          order={orderToPrint}
+          onClose={() => {
+            setShowPrintDialog(false);
+            setOrderToPrint(null);
+          }}
+        />
+      )}
       </Box>
     </>
   );
