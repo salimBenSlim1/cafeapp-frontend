@@ -359,13 +359,7 @@ export default function ProtectedAdminDashboard() {
       Disconnect
     </button>
 
-    <button
-      onClick={() => navigate('/admin/printers')}
-      className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 rounded-full shadow-lg text-white font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all flex items-center justify-center gap-2"
-    >
-      <LayoutDashboard className="w-5 h-5" />
-      Manage Printers
-    </button>
+   
   </div>
 )}
 
