@@ -199,6 +199,7 @@ useEffect(() => {
   }, [refresh, viewMode]);
 
  const handlePrintReceipt = (order) => {
+  console.log(order)
   setOrderToPrint(order);
   setShowPrintDialog(true);
 };
