@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { Add as AddIcon } from '@mui/icons-material';
+
 import {
   Box,
   Paper,
@@ -43,6 +45,8 @@ import './ServerDash.css';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import   SmartPrintDialog  from '../admin/MultiPrinterManager';
+import ServerAddItems from './ServerAddItems'; // Add at top
+
 
 function ServerDash() {
   const [orders, setOrders] = useState([]);
@@ -59,7 +63,8 @@ function ServerDash() {
   const [currentPage, setCurrentPage] = useState(1);
   const [alerts, setAlerts] = useState([]);
   const [printingOrder, setPrintingOrder] = useState(null);
-  
+  const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
+const [selectedTable, setSelectedTable] = useState(null);
   // NEW: Loading states for each order
   const [loadingOrders, setLoadingOrders] = useState({});
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
@@ -197,7 +202,10 @@ useEffect(() => {
   setOrderToPrint(order);
   setShowPrintDialog(true);
 };
-
+const handleOpenAddItems = (tableNumber) => {
+  setSelectedTable(tableNumber);
+  setShowAddItemsDialog(true);
+};
   const handleViewModeChange = (event, newMode) => {
     if (newMode !== null) {
       setViewMode(newMode);
@@ -419,6 +427,35 @@ const handleRowClick = (order) => {
               </IconButton>
             </Badge>
           </Box>
+        {/* Add Items Floating Button */}
+<Button
+  variant="contained"
+  startIcon={<AddIcon />}
+  onClick={() => {
+    // Get tables assigned to this server
+      handleOpenAddItems(); // Or show table selector
+   
+  }}
+  sx={{
+    position: 'fixed',
+    bottom: 32,
+    right: 32,
+    zIndex: 1000,
+    bgcolor: '#10b981',
+    color: 'white',
+    borderRadius: '50px',
+    px: 3,
+    py: 1.5,
+    boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
+    '&:hover': {
+      bgcolor: '#059669',
+      transform: 'scale(1.05)',
+    },
+  }}
+>
+  Add Items
+</Button>
+
         </Paper>
 
         {alerts.length !== 0 && alerts.map((e, i) => (
@@ -436,8 +473,8 @@ const handleRowClick = (order) => {
                 <p className="text-sm text-amber-800">
                   Item <span className="font-semibold">{e.name}</span> will end - You only have {e.stock} left in stock.{' '}
                   <a 
-                    href="/admin/items" 
-                    className="underline font-medium hover:text-amber-900 transition-colors"
+                    
+                    className=" font-medium hover:text-amber-900 transition-colors"
                   >
                     Update it now
                   </a>
@@ -548,23 +585,7 @@ const handleRowClick = (order) => {
                               )}
                               Served
                             </button>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateOrderStatus(order.id, 'canceled', order.Table.number);
-                              }}
-                              disabled={!!loadingOrders[order.id]}
-                              className={`${
-                                loadingOrders[order.id] === 'canceled'
-                                  ? 'bg-gray-400 cursor-not-allowed'
-                                  : 'bg-red-600 hover:bg-red-700'
-                              } rounded-2xl text-white font-semibold py-2 px-3 transition flex items-center gap-2`}
-                            >
-                              {loadingOrders[order.id] === 'canceled' && (
-                                <CircularProgress size={16} sx={{ color: 'white' }} />
-                              )}
-                              Cancel
-                            </button>
+                           
                           </Box>
                         ) : (
                           getStatusChip(order.status)
@@ -621,99 +642,192 @@ const handleRowClick = (order) => {
         </Snackbar>
 
         {/* Dialog remains the same */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+
+<Dialog 
+  open={openDialog} 
+  onClose={handleCloseDialog} 
+  maxWidth="md" 
+  fullWidth
+  PaperProps={{
+    sx: {
+      borderRadius: 2,
+      maxHeight: '90vh'
+    }
+  }}
+>
   {selectedOrder && (
     <>
-      <DialogTitle className="dialog-title">Order Details</DialogTitle>
-      <DialogContent className="dialog-content">
-        <List>
-          {selectedOrder.OrderItems.map((item) => ( // Changed from selectedOrder.map
-            <ListItem key={item.id} className="dialog-item">
+      <DialogTitle 
+        sx={{ 
+          background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+          color: 'white',
+          fontWeight: 'bold',
+          fontSize: { xs: '1.25rem', sm: '1.5rem' }
+        }}
+      >
+        Order Details - Table {selectedOrder.Table.number}
+      </DialogTitle>
+      
+      <DialogContent 
+        sx={{ 
+          p: { xs: 1, sm: 2 },
+          mt: 2 
+        }}
+      >
+        <Box sx={{ width: '100%' }}>
+          {selectedOrder.OrderItems.map((item, index) => (
+            <Box
+              key={item.id}
+              sx={{
+                py: 2,
+                px: { xs: 1, sm: 2 },
+                borderBottom: index < selectedOrder.OrderItems.length - 1 ? '1px solid rgba(0,0,0,0.1)' : 'none',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2
+              }}
+            >
               {editingItem?.id === item.id ? (
-                <>
-                  <ListItemText
-                    primary={item.Item.name}
-                    secondary={`${item.price.toFixed(2)} TnD each`}
-                  />
-                  <Box className="edit-box">
+                // EDITING MODE
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      {item.Item.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {item.price.toFixed(2)} TnD each
+                    </Typography>
+                  </Box>
+                  
+                  <Box sx={{ 
+                    display: 'flex', 
+                    gap: 1, 
+                    flexWrap: 'wrap',
+                    alignItems: 'center' 
+                  }}>
                     <TextField
                       type="number"
                       value={itemQuantity}
                       onChange={(e) => setItemQuantity(e.target.value)}
                       size="small"
                       inputProps={{ min: 1 }}
-                      className="quantity-input"
+                      sx={{ width: { xs: '100%', sm: '120px' } }}
                     />
                     <Button
                       variant="contained"
                       onClick={handleUpdateQuantity}
-                      className="update-button"
+                      sx={{ 
+                        bgcolor: '#10b981',
+                        '&:hover': { bgcolor: '#059669' },
+                        flex: { xs: 1, sm: 'initial' }
+                      }}
                     >
                       Update
                     </Button>
                     <Button
                       variant="outlined"
                       onClick={() => setEditingItem(null)}
-                      className="cancel-button"
+                      sx={{ 
+                        flex: { xs: 1, sm: 'initial' }
+                      }}
                     >
                       Cancel
                     </Button>
                   </Box>
-                </>
+                </Box>
               ) : (
-                <>
-                 <ListItem 
-  sx={{ 
-    py: 2,
-    px: 2,
-    borderBottom: '1px solid rgba(0,0,0,0.1)',
-    display: 'grid',
-    gridTemplateColumns: '250px 1fr 60px',
-    gap: 2,
-    alignItems: 'center'
-  }}
->
-  <ListItemText
-    primary={`${item.quantity}x ${item.Item.name}`}
-    secondary={`${(item.quantity * item.price).toFixed(2)} TnD`}
-    className="item-text"
-  />
-  
-<TextField
-  type="text"
-  value={item?.comment || ''}
-  size="small"
-  variant="outlined"
-  disabled
-  multiline
-  maxRows={5}       // optional, limits height
-  fullWidth={false} // optional, remove if you want it to shrink to content
-  InputProps={{
-    readOnly: true,
-    style: { 
-      overflow: 'hidden', 
-      whiteSpace: 'pre-wrap',  // preserve line breaks
-      wordWrap: 'break-word',  // wrap long words
-      padding: '8px',          // adjust padding if needed
-    },
-  }}
-/>
-  
-  <IconButton
-    onClick={() => handleEditItem(item)}
-    className="action-button edit-icon"
-  >
-    <EditIcon />
-  </IconButton>
-</ListItem>
-                </>
+                // VIEW MODE - Fixed nested ListItem issue
+                <Box sx={{ 
+                  display: 'grid',
+                  gridTemplateColumns: { 
+                    xs: '1fr',
+                    sm: '1fr auto 60px'
+                  },
+                  gap: 2,
+                  alignItems: 'start'
+                }}>
+                  {/* Item Info */}
+                  <Box>
+                    <Typography variant="subtitle1" fontWeight="bold">
+                      {item.quantity}x {item.Item.name}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {(item.quantity * item.price).toFixed(2)} TnD
+                    </Typography>
+                  </Box>
+                  
+                  {/* Comment */}
+                  {item.comment && (
+                    <TextField
+                      value={item.comment}
+                      size="small"
+                      variant="outlined"
+                      disabled
+                      multiline
+                      maxRows={5}
+                      fullWidth
+                      InputProps={{
+                        readOnly: true,
+                        sx: { 
+                          backgroundColor: '#f8fafc',
+                          fontSize: { xs: '0.875rem', sm: '1rem' }
+                        }
+                      }}
+                      sx={{
+                        gridColumn: { xs: '1', sm: '2' },
+                        minWidth: { xs: '100%', sm: '200px' },
+                        maxWidth: { xs: '100%', sm: '300px' }
+                      }}
+                    />
+                  )}
+                  
+                  {/* Edit Button */}
+                  <IconButton
+                    onClick={() => handleEditItem(item)}
+                    sx={{ 
+                      color: '#1976d2',
+                      gridColumn: { xs: '1', sm: '3' },
+                      justifySelf: { xs: 'start', sm: 'center' }
+                    }}
+                  >
+                    <EditIcon />
+                  </IconButton>
+                </Box>
               )}
-            </ListItem>
+            </Box>
           ))}
-        </List>
+        </Box>
+        
+        {/* Total */}
+        <Box sx={{ 
+          mt: 3, 
+          pt: 2, 
+          borderTop: '2px solid #e2e8f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          px: { xs: 1, sm: 2 }
+        }}>
+          <Typography variant="h6" fontWeight="bold">
+            Total
+          </Typography>
+          <Typography variant="h6" fontWeight="bold" color="primary">
+            {selectedOrder.totalPrice.toFixed(2)} TnD
+          </Typography>
+        </Box>
       </DialogContent>
-      <DialogActions className="dialog-actions">
-        <Button onClick={handleCloseDialog} className="close-button">
+      
+      <DialogActions sx={{ p: { xs: 2, sm: 3 } }}>
+        <Button 
+          onClick={handleCloseDialog}
+          variant="contained"
+          fullWidth
+          sx={{
+            bgcolor: '#1e293b',
+            '&:hover': { bgcolor: '#334155' },
+            py: 1.5
+          }}
+        >
           Close
         </Button>
       </DialogActions>
@@ -730,6 +844,14 @@ const handleRowClick = (order) => {
         />
       )}
       </Box>
+      <ServerAddItems
+  open={showAddItemsDialog}
+  onClose={() => setShowAddItemsDialog(false)}
+  tableNumber={selectedTable}
+  onOrderAdded={() => {
+    setRefresh(!refresh);
+  }}
+/>
     </>
   );
 }

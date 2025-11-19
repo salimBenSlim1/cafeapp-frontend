@@ -17,6 +17,7 @@ import ManageWaiters from './components/admin/AdminMangeWaiter';
 import ServerLogin from './components/server/ServerLogin';
 import ServerDashboard from './components/server/ServerDash';
 import PrinterManager from './components/admin/AdminPrinters';
+import BarmanOrders from './components/server/Barman';
 
 // Create a custom theme
 const theme = createTheme({
@@ -69,6 +70,7 @@ function App() {
           <Route path="/client-panier" element={<UserOrderPage />} />
           <Route path="/server-login" element={<ServerLogin />} />
           <Route path="/server-dashboard" element={<ServerDashboard />} />
+          <Route path="/barman" element={<BarmanOrders />} />
           
         </Routes>
       </Router>

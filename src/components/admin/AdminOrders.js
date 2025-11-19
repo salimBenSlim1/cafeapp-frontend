@@ -123,7 +123,7 @@ const [orderToPrint, setOrderToPrint] = useState(null);
 
         if (viewMode === "pending") {
           return status === "pending";
-        } else if (status === "served") {
+        } else if (status === "served"||status==="canceled") {
           return orderDate >= start && orderDate <= end;
         }
 
@@ -221,6 +221,7 @@ const handlePrintReceipt = (order) => {
       pending: '#FFA500',
       prepared: '#87CEEB',
       served: '#10b981',
+      canceled:'red'
     };
 
     return (
@@ -399,16 +400,27 @@ const handlePrintReceipt = (order) => {
                       <TableCell className="table-cell price-cell">
                         {order.totalPrice.toFixed(2)} TnD
                       </TableCell>
-                      <TableCell
-                        className="table-cell status-cell"
-                        onClick={() => {
-                          if (viewMode === 'pending') {
-                            updateOrderStatus(order.id, 'served', order.tableId);
-                          }
-                        }}
-                      >
-                        {getStatusChip(order.status)}
-                      </TableCell>
+                     <TableCell className="table-cell status-cell">
+  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center' }}>
+    {viewMode === 'pending' && (
+      <>
+        <Box
+          onClick={() => updateOrderStatus(order.id, 'served', order.tableId)}
+          sx={{ cursor: 'pointer' }}
+        >
+          {getStatusChip('pending')}
+        </Box>
+        <Box
+          onClick={() => updateOrderStatus(order.id, 'canceled', order.tableId)}
+          sx={{ cursor: 'pointer' }}
+        >
+          {getStatusChip('canceled')}
+        </Box>
+      </>
+    )}
+    {viewMode === 'served' && getStatusChip(order.status)}
+  </Box>
+</TableCell>
                       <TableCell className="table-cell time-cell">
                         {new Date(order.createdAt).toLocaleString().split(' ')[1]}
                       </TableCell>
