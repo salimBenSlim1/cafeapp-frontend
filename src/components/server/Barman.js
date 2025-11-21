@@ -10,6 +10,10 @@ function BarmanOrders() {
   const startY = useRef(0);
   const pullDistance = useRef(0);
   const containerRef = useRef(null);
+  const [swipingOrderId, setSwipingOrderId] = useState(null);
+  const [swipeDistance, setSwipeDistance] = useState(0);
+  const swipeStartY = useRef(0);
+  const isDismissing = useRef(false);
 
   // Setup audio
   useEffect(() => {
@@ -121,9 +125,7 @@ function BarmanOrders() {
   };
 
   const handleTouchEnd = () => {
-    if (pullDistance.current > 80 && !refreshing) {
-      fetchOrders(true);
-    }
+    
     containerRef.current.style.transform = 'translateY(0)';
     pullDistance.current = 0;
   };
@@ -144,6 +146,50 @@ function BarmanOrders() {
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes < 60) return `${diffMinutes}m ago`;
     return `${Math.floor(diffMinutes / 60)}h ago`;
+  };
+
+  // Swipe to dismiss handlers
+  const handleSwipeStart = (e, orderId) => {
+    if (isDismissing.current) return;
+    swipeStartY.current = e.touches[0].clientY;
+    setSwipingOrderId(orderId);
+  };
+
+  const handleSwipeMove = (e, orderId) => {
+    if (swipingOrderId !== orderId || isDismissing.current) return;
+    
+    const currentY = e.touches[0].clientY;
+    const distance = currentY - swipeStartY.current;
+    
+    // Only allow downward swipes
+    if (distance > 0) {
+      setSwipeDistance(Math.min(distance, 300));
+    }
+  };
+
+  const handleSwipeEnd = (orderId) => {
+    if (isDismissing.current) return;
+    
+    // If swiped down more than 120px, dismiss the order
+    if (swipeDistance > 120) {
+      isDismissing.current = true;
+      
+      // Animate out
+      setSwipeDistance(500);
+      
+      // Remove from list after animation
+      setTimeout(() => {
+        setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+        setNotificationCount(prev => Math.max(0, prev - 1));
+        isDismissing.current = false;
+        setSwipingOrderId(null);
+        setSwipeDistance(0);
+      }, 300);
+    } else {
+      // Spring back
+      setSwipeDistance(0);
+      setSwipingOrderId(null);
+    }
   };
 
   return (
@@ -253,125 +299,158 @@ function BarmanOrders() {
             </p>
           </div>
         ) : (
-          orders.map((order) => (
-            <div
-              key={order.id}
-              style={{
-                backgroundColor: 'white',
-                borderRadius: '16px',
-                padding: '16px',
-                marginBottom: '16px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                border: '1px solid #e2e8f0'
-              }}
-            >
-              {/* Order Header */}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '12px',
-                paddingBottom: '12px',
-                borderBottom: '2px solid #f1f5f9'
-              }}>
+          orders.map((order) => {
+            const isBeingSwiped = swipingOrderId === order.id;
+            const currentSwipe = isBeingSwiped ? swipeDistance : 0;
+            const opacity = Math.max(0.3, 1 - (currentSwipe / 300));
+            const scale = Math.max(0.85, 1 - (currentSwipe / 600));
+            
+            return (
+              <div
+                key={order.id}
+                onTouchStart={(e) => handleSwipeStart(e, order.id)}
+                onTouchMove={(e) => handleSwipeMove(e, order.id)}
+                onTouchEnd={() => handleSwipeEnd(order.id)}
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  marginBottom: '16px',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  border: '1px solid #e2e8f0',
+                  transform: `translateY(${currentSwipe}px) scale(${scale})`,
+                  opacity: opacity,
+                  transition: isBeingSwiped && swipeDistance < 120 ? 'transform 0.3s ease-out, opacity 0.3s ease-out' : 'none',
+                  touchAction: 'pan-y',
+                  position: 'relative',
+                  cursor: 'grab'
+                }}
+              >
+                {/* Swipe indicator */}
+                {isBeingSwiped && currentSwipe > 20 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: '48px',
+                    opacity: Math.min(currentSwipe / 120, 0.8),
+                    pointerEvents: 'none',
+                    zIndex: 1,
+                    transition: 'opacity 0.2s'
+                  }}>
+                    {currentSwipe > 120 ? '✅' : '👇'}
+                  </div>
+                )}
+                
+                {/* Order Header */}
                 <div style={{
                   display: 'flex',
+                  justifyContent: 'space-between',
                   alignItems: 'center',
-                  gap: '8px'
+                  marginBottom: '12px',
+                  paddingBottom: '12px',
+                  borderBottom: '2px solid #f1f5f9'
                 }}>
-                  <div style={{
-                    backgroundColor: '#10b981',
-                    color: 'white',
-                    borderRadius: '12px',
-                    padding: '8px 16px',
-                    fontSize: '18px',
-                    fontWeight: 'bold'
-                  }}>
-                    Table {order.Table.number}
-                  </div>
-                  <span style={{
-                    backgroundColor: '#fef3c7',
-                    color: '#92400e',
-                    padding: '4px 10px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '600'
-                  }}>
-                    {getTimeDifference(order.createdAt)}
-                  </span>
-                </div>
-                <div style={{
-                  color: '#64748b',
-                  fontSize: '14px',
-                  fontWeight: '500'
-                }}>
-                  {formatTime(order.createdAt)}
-                </div>
-              </div>
-
-              {/* Order Items */}
-              {order.OrderItems.map((item, index) => (
-                <div
-                  key={item.id}
-                  style={{
-                    paddingTop: index > 0 ? '12px' : '0',
-                    paddingBottom: '12px',
-                    borderBottom: index < order.OrderItems.length - 1 ? '1px solid #f1f5f9' : 'none'
-                  }}
-                >
                   <div style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: item.comment ? '8px' : '0'
+                    alignItems: 'center',
+                    gap: '8px'
                   }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{
-                        fontSize: '16px',
-                        fontWeight: 'bold',
-                        color: '#1e293b',
-                        marginBottom: '4px'
-                      }}>
-                        {item.Item.name} x{item.quantity}
-                      </div>
-                      
-                    </div>
-                  </div>
-                  
-                  {/* Comment */}
-                  {item.comment && (
                     <div style={{
-                      backgroundColor: '#fef9e7',
-                      border: '1px solid #fde68a',
-                      borderRadius: '8px',
-                      padding: '10px',
-                      marginTop: '8px'
+                      backgroundColor: '#10b981',
+                      color: 'white',
+                      borderRadius: '12px',
+                      padding: '8px 16px',
+                      fontSize: '18px',
+                      fontWeight: 'bold'
                     }}>
-                      <div style={{
-                        fontSize: '11px',
-                        fontWeight: '600',
-                        color: '#92400e',
-                        marginBottom: '4px',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                      }}>
-                        Note
-                      </div>
-                      <div style={{
-                        fontSize: '14px',
-                        color: '#451a03',
-                        lineHeight: '1.4',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-word'
-                      }}>
-                        {item.comment}
+                      Table {order.Table.number}
+                    </div>
+                    <span style={{
+                      backgroundColor: '#fef3c7',
+                      color: '#92400e',
+                      padding: '4px 10px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
+                      {getTimeDifference(order.createdAt)}
+                    </span>
+                  </div>
+                  <div style={{
+                    color: '#64748b',
+                    fontSize: '14px',
+                    fontWeight: '500'
+                  }}>
+                    {formatTime(order.createdAt)}
+                  </div>
+                </div>
+
+                {/* Order Items */}
+                {order.OrderItems.map((item, index) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      paddingTop: index > 0 ? '12px' : '0',
+                      paddingBottom: '12px',
+                      borderBottom: index < order.OrderItems.length - 1 ? '1px solid #f1f5f9' : 'none'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      marginBottom: item.comment ? '8px' : '0'
+                    }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: '16px',
+                          fontWeight: 'bold',
+                          color: '#1e293b',
+                          marginBottom: '4px'
+                        }}>
+                          {item.Item.name} x{item.quantity}
+                        </div>
+                        
                       </div>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ))
+                    
+                    {/* Comment */}
+                    {item.comment && (
+                      <div style={{
+                        backgroundColor: '#fef9e7',
+                        border: '1px solid #fde68a',
+                        borderRadius: '8px',
+                        padding: '10px',
+                        marginTop: '8px'
+                      }}>
+                        <div style={{
+                          fontSize: '11px',
+                          fontWeight: '600',
+                          color: '#92400e',
+                          marginBottom: '4px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px'
+                        }}>
+                          Note
+                        </div>
+                        <div style={{
+                          fontSize: '14px',
+                          color: '#451a03',
+                          lineHeight: '1.4',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-word'
+                        }}>
+                          {item.comment}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })
         )}
       </div>
 

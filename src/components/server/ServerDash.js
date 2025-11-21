@@ -79,7 +79,7 @@ useEffect(() => {
   
   // Option 1: Use a notification sound URL (recommended)
   // You can use any of these free notification sounds:
-  audioRef.current.src = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'; // Positive notification
+  audioRef.current.src = 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'; // Positive notification
   // OR use: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3' // Bell notification
   // OR use: 'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3' // Success notification
   
