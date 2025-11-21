@@ -115,7 +115,7 @@ Koun mdefini, 3tini actions li njmo na3mlouhom w koun professionnel.
 `;
 
       // Using OpenRouter API - consider moving API key to environment variables
-      const GROQ_API_KEY = process.env.GROQ_API
+      const GROQ_API_KEY = `${process.env.GROQ_API}`
 
        const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
