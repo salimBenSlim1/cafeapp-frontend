@@ -614,7 +614,7 @@ const toggleTableSelection = async (tableNumber) => {
           <p
           onClick={()=>navigate('/server-login/'+localStorage.getItem('path'))}
           className="text-2xl font-bold text-purple-400 cursor-pointer">
-           {'https://cafeapp-frontend-lij4.vercel.app/server-login'+localStorage.getItem('path')}
+           {'https://coffai.tn/server-login'+localStorage.getItem('path')}
           </p>
     </div>
           {filteredWaiters.length === 0 && (
