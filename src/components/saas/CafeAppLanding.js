@@ -111,7 +111,7 @@ export default function CafeAppLanding() {
             <button 
             onClick={()=>navigate('/login')}
             className="bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2 rounded-full hover:scale-105 transition font-semibold">
-              Free Trial
+              Login
             </button>
           </div>
 
@@ -125,8 +125,10 @@ export default function CafeAppLanding() {
             <div className="px-6 py-4 space-y-4">
               <button onClick={() => scrollToSection(featuresRef)} className="block w-full text-left">How It Works</button>
               <button onClick={() => scrollToSection(pricingRef)} className="block w-full text-left">Pricing</button>
-              <button className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2 rounded-full">
-                Free Trial
+              <button 
+              onClick={()=>navigate('/login')}
+              className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-2 rounded-full">
+                Login
               </button>
             </div>
           </div>
@@ -162,7 +164,7 @@ export default function CafeAppLanding() {
                   formSection?.scrollIntoView({ behavior: 'smooth' });
                 }}
             className="bg-gradient-to-r from-blue-600 to-cyan-600 px-8 py-4 rounded-full text-lg font-semibold hover:scale-105 transition glow-btn flex items-center gap-2">
-              Start Free <ChevronRight />
+              Start <ChevronRight />
             </button>
             <button 
               onClick={() => setIsVideoOpen(true)}
@@ -194,7 +196,7 @@ export default function CafeAppLanding() {
 
      <div className="grid md:grid-cols-3 gap-8">
   {[
-    { icon: CreditCard, title: '1. Select Plan', desc: 'Choose the perfect plan for your cafe and start your 7-day free trial', color: 'from-blue-600 to-cyan-600' },
+    { icon: CreditCard, title: '1. Select Plan', desc: 'Choose the perfect plan for your cafe and start ', color: 'from-blue-600 to-cyan-600' },
     { icon: UserPlus, title: '2. Join Us', desc: 'Complete registration and get instant access to your dashboard', color: 'from-cyan-600 to-teal-600' },
     { icon: QrCode, title: '3. Start Working', desc: 'Print your QR codes, place them on tables, and start receiving orders', color: 'from-teal-600 to-green-600' }
   ].map((item, i) => (
@@ -265,7 +267,7 @@ export default function CafeAppLanding() {
               { 
                 icon: Coffee, 
                 title: 'Easy to use', 
-                desc: 'Intuitive interface for you and your customers. Free training included.',
+                desc: 'Intuitive interface for you and your customers.',
                 stat: '5/5'
               },
               { 
@@ -404,7 +406,7 @@ export default function CafeAppLanding() {
       }}
       className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 px-6 py-3 rounded-full font-semibold hover:scale-105 transition glow-btn flex items-center justify-center gap-2"
     >
-      Start free trial <ChevronRight size={18} />
+      Start  <ChevronRight size={18} />
     </button>
   </div>
 
@@ -463,19 +465,7 @@ export default function CafeAppLanding() {
 </div>
 
           {/* Trial Info */}
-          <div className="max-w-2xl mx-auto mt-12 reveal">
-            <div className="glass rounded-2xl p-6 text-center">
-              <div className="flex items-center justify-center gap-3 mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-green-600 to-emerald-600 rounded-xl flex items-center justify-center">
-                  <Star size={20} />
-                </div>
-                <div className="font-bold text-lg">7-day free trial on all plans</div>
-              </div>
-              <p className="text-sm text-gray-400">
-                No credit card required • Cancel anytime • Full access to all features
-              </p>
-            </div>
-          </div>
+     
 
           {/* Trial Info */}
         
@@ -490,7 +480,7 @@ export default function CafeAppLanding() {
               Create your digital cafe now 
             </h2>
             <p className="text-xl text-gray-400">
-              Fill out the form and start your 7-day free trial
+              Fill out the form and start 
             </p>
           </div>
 
