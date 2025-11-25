@@ -407,6 +407,38 @@ const handleRowClick = (order) => {
               Disconnect
             </Box>
           </Button>
+          <Button
+            onClick={() => {
+              
+              navigate('/barman')
+            }}
+            className='float-right'
+            sx={{
+              // position: "absolute",
+              top: 16,
+              right: 16,
+              backdropFilter: "blur(10px)",
+              backgroundColor: "black",
+              color: "white",
+              borderRadius: "50px",
+              px: 2,
+              py: 1,
+              textTransform: "none",
+              transition: "transform 0.2s",
+              zIndex: 10,
+              "&:hover": {
+                backgroundColor: "rgba(255, 255, 255, 0.15)",
+                transform: "scale(1.05)",
+              },
+              "& .MuiButton-startIcon": {
+                marginRight: { xs: 0, sm: 1 },
+              },
+            }}
+          >
+            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
+              Barman
+            </Box>
+          </Button>
 
           <Box className="header-content">
             <Box>

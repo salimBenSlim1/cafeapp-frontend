@@ -1,134 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
-import axios from 'axios';
 
-function BarmanOrders() {
-  const [orders, setOrders] = useState([]);
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
-  const audioRef = useRef(null);
-  const startY = useRef(0);
-  const pullDistance = useRef(0);
-  const containerRef = useRef(null);
+// Shared Order Display Component
+function OrderDisplay({ orders, title, color, onDismiss, notificationCount }) {
   const [swipingOrderId, setSwipingOrderId] = useState(null);
   const [swipeDistance, setSwipeDistance] = useState(0);
-  const swipeStartY = useRef(0);
+  const swipeStartX = useRef(0);
   const isDismissing = useRef(false);
-
-  // Setup audio
-  useEffect(() => {
-    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
-    audioRef.current.volume = 0.5;
-    audioRef.current.load();
-    
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-      }
-    };
-  }, []);
-
-  const playNotificationSound = () => {
-    if (audioRef.current) {
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(error => {
-        console.log('Audio play failed:', error);
-      });
-    }
-  };
-
-  // Fetch orders
-  const fetchOrders = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/server/getOrders`,
-        {
-          headers: { 'server-token': localStorage.getItem('serverToken') }
-        }
-      );
-      
-      const pendingOrders = response.data
-        .filter(order => order.status === 'pending')
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      setOrders(pendingOrders);
-      
-      if (isRefresh && notificationCount > 0) {
-        setNotificationCount(0);
-      }
-    } catch (error) {
-      console.error('Error fetching orders:', error);
-    } finally {
-      if (isRefresh) {
-        setTimeout(() => setRefreshing(false), 500);
-      }
-    }
-  };
-
-  // Initial fetch
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  // Socket.io setup
-  useEffect(() => {
-    const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
-    const socket = io(SOCKET_URL, {
-      transports: ['websocket'],
-      reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: Infinity,
-    });
-
-    socket.on('connect', () => {
-      const cafeId = localStorage.getItem('cafeId');
-      if (cafeId) {
-        socket.emit('joinCafe', { cafeId });
-      }
-    });
-
-    socket.on('newOrder', (data) => {
-      setNotificationCount(prev => prev + 1);
-      fetchOrders();
-      playNotificationSound();
-    });
-
-    socket.on('orderStatusUpdated', (data) => {
-      fetchOrders();
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
-
-  // Pull to refresh handlers
-  const handleTouchStart = (e) => {
-    if (containerRef.current.scrollTop === 0) {
-      startY.current = e.touches[0].clientY;
-    }
-  };
-
-  const handleTouchMove = (e) => {
-    if (containerRef.current.scrollTop === 0 && !refreshing) {
-      const currentY = e.touches[0].clientY;
-      pullDistance.current = currentY - startY.current;
-      
-      if (pullDistance.current > 0 && pullDistance.current < 150) {
-        containerRef.current.style.transform = `translateY(${pullDistance.current * 0.5}px)`;
-      }
-    }
-  };
-
-  const handleTouchEnd = () => {
-    
-    containerRef.current.style.transform = 'translateY(0)';
-    pullDistance.current = 0;
-  };
 
   const formatTime = (date) => {
     const d = new Date(date);
@@ -148,45 +25,35 @@ function BarmanOrders() {
     return `${Math.floor(diffMinutes / 60)}h ago`;
   };
 
-  // Swipe to dismiss handlers
   const handleSwipeStart = (e, orderId) => {
     if (isDismissing.current) return;
-    swipeStartY.current = e.touches[0].clientY;
+    swipeStartX.current = e.touches[0].clientX;
     setSwipingOrderId(orderId);
   };
 
   const handleSwipeMove = (e, orderId) => {
     if (swipingOrderId !== orderId || isDismissing.current) return;
     
-    const currentY = e.touches[0].clientY;
-    const distance = currentY - swipeStartY.current;
+    const currentX = e.touches[0].clientX;
+    const distance = currentX - swipeStartX.current;
     
-    // Only allow downward swipes
-    if (distance > 0) {
-      setSwipeDistance(Math.min(distance, 300));
-    }
+    setSwipeDistance(distance);
   };
 
   const handleSwipeEnd = (orderId) => {
     if (isDismissing.current) return;
     
-    // If swiped down more than 120px, dismiss the order
-    if (swipeDistance > 120) {
+    if (Math.abs(swipeDistance) > 120) {
       isDismissing.current = true;
+      setSwipeDistance(swipeDistance > 0 ? 500 : -500);
       
-      // Animate out
-      setSwipeDistance(500);
-      
-      // Remove from list after animation
       setTimeout(() => {
-        setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
-        setNotificationCount(prev => Math.max(0, prev - 1));
+        onDismiss(orderId);
         isDismissing.current = false;
         setSwipingOrderId(null);
         setSwipeDistance(0);
       }, 300);
     } else {
-      // Spring back
       setSwipeDistance(0);
       setSwipingOrderId(null);
     }
@@ -198,12 +65,11 @@ function BarmanOrders() {
       backgroundColor: '#f8fafc',
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
-      {/* Header */}
       <div style={{
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+        background: `linear-gradient(135deg, ${color} 0%, ${color}dd 100%)`,
         padding: '20px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
       }}>
@@ -219,7 +85,7 @@ function BarmanOrders() {
               fontSize: '24px',
               fontWeight: 'bold'
             }}>
-              Bar Orders
+              {title}
             </h1>
             <p style={{
               margin: '4px 0 0 0',
@@ -230,63 +96,33 @@ function BarmanOrders() {
             </p>
           </div>
           
-          {/* Notification Badge */}
           {notificationCount > 0 && (
             <div style={{
-              position: 'relative',
+              backgroundColor: '#ef4444',
+              color: 'white',
+              borderRadius: '50%',
               width: '48px',
-              height: '48px'
+              height: '48px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              animation: 'pulse 2s infinite',
+              boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)'
             }}>
-              <div style={{
-                position: 'absolute',
-                top: 0,
-                right: 0,
-                backgroundColor: '#ef4444',
-                color: 'white',
-                borderRadius: '50%',
-                width: '48px',
-                height: '48px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                animation: 'pulse 2s infinite',
-                boxShadow: '0 0 20px rgba(239, 68, 68, 0.5)'
-              }}>
-                {notificationCount > 99 ? '99+' : notificationCount}
-              </div>
+              {notificationCount > 99 ? '99+' : notificationCount}
             </div>
           )}
         </div>
-        
-        {/* Pull to refresh indicator */}
-        {refreshing && (
-          <div style={{
-            textAlign: 'center',
-            marginTop: '12px',
-            color: 'rgba(255,255,255,0.9)',
-            fontSize: '14px'
-          }}>
-            Refreshing...
-          </div>
-        )}
       </div>
 
-      {/* Orders List */}
-      <div
-        ref={containerRef}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        style={{
-          padding: '16px',
-          overflowY: 'auto',
-          height: 'calc(100vh - 120px)',
-          transition: 'transform 0.3s ease-out',
-          WebkitOverflowScrolling: 'touch'
-        }}
-      >
+      <div style={{
+        padding: '16px',
+        overflowY: 'auto',
+        height: 'calc(100vh - 100px)',
+        WebkitOverflowScrolling: 'touch'
+      }}>
         {orders.length === 0 ? (
           <div style={{
             textAlign: 'center',
@@ -295,15 +131,15 @@ function BarmanOrders() {
           }}>
             <p style={{ fontSize: '18px', margin: 0 }}>No pending orders</p>
             <p style={{ fontSize: '14px', marginTop: '8px', opacity: 0.7 }}>
-              Pull down to refresh
+              Swipe left or right to dismiss orders
             </p>
           </div>
         ) : (
           orders.map((order) => {
             const isBeingSwiped = swipingOrderId === order.id;
             const currentSwipe = isBeingSwiped ? swipeDistance : 0;
-            const opacity = Math.max(0.3, 1 - (currentSwipe / 300));
-            const scale = Math.max(0.85, 1 - (currentSwipe / 600));
+            const opacity = Math.max(0.2, 1 - (Math.abs(currentSwipe) / 400));
+            const rotation = currentSwipe / 30;
             
             return (
               <div
@@ -318,32 +154,30 @@ function BarmanOrders() {
                   marginBottom: '16px',
                   boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
                   border: '1px solid #e2e8f0',
-                  transform: `translateY(${currentSwipe}px) scale(${scale})`,
+                  transform: `translateX(${currentSwipe}px) rotate(${rotation}deg)`,
                   opacity: opacity,
-                  transition: isBeingSwiped && swipeDistance < 120 ? 'transform 0.3s ease-out, opacity 0.3s ease-out' : 'none',
-                  touchAction: 'pan-y',
+                  transition: isBeingSwiped && Math.abs(swipeDistance) < 120 ? 'transform 0.3s ease-out, opacity 0.3s ease-out' : 'none',
+                  touchAction: 'pan-x',
                   position: 'relative',
                   cursor: 'grab'
                 }}
               >
-                {/* Swipe indicator */}
-                {isBeingSwiped && currentSwipe > 20 && (
+                {isBeingSwiped && Math.abs(currentSwipe) > 20 && (
                   <div style={{
                     position: 'absolute',
                     top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
+                    left: currentSwipe > 0 ? '20px' : 'auto',
+                    right: currentSwipe < 0 ? '20px' : 'auto',
+                    transform: 'translateY(-50%)',
                     fontSize: '48px',
-                    opacity: Math.min(currentSwipe / 120, 0.8),
+                    opacity: Math.min(Math.abs(currentSwipe) / 120, 0.8),
                     pointerEvents: 'none',
-                    zIndex: 1,
-                    transition: 'opacity 0.2s'
+                    zIndex: 1
                   }}>
-                    {currentSwipe > 120 ? '✅' : '👇'}
+                    {Math.abs(currentSwipe) > 120 ? '✅' : '👉'}
                   </div>
                 )}
                 
-                {/* Order Header */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -358,7 +192,7 @@ function BarmanOrders() {
                     gap: '8px'
                   }}>
                     <div style={{
-                      backgroundColor: '#10b981',
+                      backgroundColor: color,
                       color: 'white',
                       borderRadius: '12px',
                       padding: '8px 16px',
@@ -387,7 +221,6 @@ function BarmanOrders() {
                   </div>
                 </div>
 
-                {/* Order Items */}
                 {order.OrderItems.map((item, index) => (
                   <div
                     key={item.id}
@@ -398,25 +231,14 @@ function BarmanOrders() {
                     }}
                   >
                     <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                      marginBottom: item.comment ? '8px' : '0'
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      color: '#1e293b',
+                      marginBottom: item.comment ? '8px' : '4px'
                     }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: '16px',
-                          fontWeight: 'bold',
-                          color: '#1e293b',
-                          marginBottom: '4px'
-                        }}>
-                          {item.Item.name} x{item.quantity}
-                        </div>
-                        
-                      </div>
+                      {item.Item.name} x{item.quantity}
                     </div>
                     
-                    {/* Comment */}
                     {item.comment && (
                       <div style={{
                         backgroundColor: '#fef9e7',
@@ -470,4 +292,392 @@ function BarmanOrders() {
   );
 }
 
-export default BarmanOrders;
+// Bar Orders Component (Drinks & Coffee)
+function BarmanOrders() {
+  const [orders, setOrders] = useState([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audioRef.current.volume = 0.5;
+    audioRef.current.load();
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const playNotificationSound = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(error => console.log('Audio play failed:', error));
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/server/getOrders`,
+        {
+          headers: { 'server-token': localStorage.getItem('serverToken') }
+        }
+      );
+      
+      const data = await response.json();
+      
+      const filteredOrders = data
+        .filter(order => {
+          if (order.status !== 'pending') return false;
+          return order.OrderItems.some(item => 
+            item.Item.category === 'drink' || item.Item.category === 'coffee'
+          );
+        })
+        .map(order => ({
+          ...order,
+          OrderItems: order.OrderItems.filter(item => 
+            item.Item.category === 'drink' || item.Item.category === 'coffee'
+          )
+        }))
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      
+      setOrders(filteredOrders);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
+    
+    // Dynamically import socket.io-client
+    import('socket.io-client').then(({ io }) => {
+      const socket = io(SOCKET_URL, {
+        transports: ['websocket'],
+        reconnection: true,
+      });
+
+      socket.on('connect', () => {
+        const cafeId = localStorage.getItem('cafeId');
+        if (cafeId) socket.emit('joinCafe', { cafeId });
+      });
+
+      socket.on('newOrder', () => {
+        setNotificationCount(prev => prev + 1);
+        fetchOrders();
+        playNotificationSound();
+      });
+
+      socket.on('orderStatusUpdated', () => {
+        fetchOrders();
+      });
+
+      return () => socket.disconnect();
+    });
+  }, []);
+
+  const handleDismiss = (orderId) => {
+    setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+    setNotificationCount(prev => Math.max(0, prev - 1));
+  };
+
+  return (
+    <OrderDisplay 
+      orders={orders}
+      title="Bar Orders"
+      color="#1e293b"
+      onDismiss={handleDismiss}
+      notificationCount={notificationCount}
+    />
+  );
+}
+
+// Kitchen Orders Component (Food & Dessert)
+function KitchenOrders() {
+  const [orders, setOrders] = useState([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audioRef.current.volume = 0.5;
+    audioRef.current.load();
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const playNotificationSound = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(error => console.log('Audio play failed:', error));
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/server/getOrders`,
+        {
+          headers: { 'server-token': localStorage.getItem('serverToken') }
+        }
+      );
+      
+      const data = await response.json();
+      
+      const filteredOrders = data
+        .filter(order => {
+          if (order.status !== 'pending') return false;
+          return order.OrderItems.some(item => 
+            item.Item.category === 'food' || item.Item.category === 'dessert'
+          );
+        })
+        .map(order => ({
+          ...order,
+          OrderItems: order.OrderItems.filter(item => 
+            item.Item.category === 'food' || item.Item.category === 'dessert'
+          )
+        }))
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      
+      setOrders(filteredOrders);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
+    
+    import('socket.io-client').then(({ io }) => {
+      const socket = io(SOCKET_URL, {
+        transports: ['websocket'],
+        reconnection: true,
+      });
+
+      socket.on('connect', () => {
+        const cafeId = localStorage.getItem('cafeId');
+        if (cafeId) socket.emit('joinCafe', { cafeId });
+      });
+
+      socket.on('newOrder', () => {
+        setNotificationCount(prev => prev + 1);
+        fetchOrders();
+        playNotificationSound();
+      });
+
+      socket.on('orderStatusUpdated', () => {
+        fetchOrders();
+      });
+
+      return () => socket.disconnect();
+    });
+  }, []);
+
+  const handleDismiss = (orderId) => {
+    setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+    setNotificationCount(prev => Math.max(0, prev - 1));
+  };
+
+  return (
+    <OrderDisplay 
+      orders={orders}
+      title="Kitchen Orders"
+      color="#dc2626"
+      onDismiss={handleDismiss}
+      notificationCount={notificationCount}
+    />
+  );
+}
+
+// Chicha Orders Component (Smoking)
+function ChichaOrders() {
+  const [orders, setOrders] = useState([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+    audioRef.current.volume = 0.5;
+    audioRef.current.load();
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  const playNotificationSound = () => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = 0;
+      audioRef.current.play().catch(error => console.log('Audio play failed:', error));
+    }
+  };
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_URL}/server/getOrders`,
+        {
+          headers: { 'server-token': localStorage.getItem('serverToken') }
+        }
+      );
+      
+      const data = await response.json();
+      
+      const filteredOrders = data
+        .filter(order => {
+          if (order.status !== 'pending') return false;
+          return order.OrderItems.some(item => item.Item.category === 'smoking');
+        })
+        .map(order => ({
+          ...order,
+          OrderItems: order.OrderItems.filter(item => item.Item.category === 'smoking')
+        }))
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      
+      setOrders(filteredOrders);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
+    
+    import('socket.io-client').then(({ io }) => {
+      const socket = io(SOCKET_URL, {
+        transports: ['websocket'],
+        reconnection: true,
+      });
+
+      socket.on('connect', () => {
+        const cafeId = localStorage.getItem('cafeId');
+        if (cafeId) socket.emit('joinCafe', { cafeId });
+      });
+
+      socket.on('newOrder', () => {
+        setNotificationCount(prev => prev + 1);
+        fetchOrders();
+        playNotificationSound();
+      });
+
+      socket.on('orderStatusUpdated', () => {
+        fetchOrders();
+      });
+
+      return () => socket.disconnect();
+    });
+  }, []);
+
+  const handleDismiss = (orderId) => {
+    setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId));
+    setNotificationCount(prev => Math.max(0, prev - 1));
+  };
+
+  return (
+    <OrderDisplay 
+      orders={orders}
+      title="Chicha Orders"
+      color="#7c3aed"
+      onDismiss={handleDismiss}
+      notificationCount={notificationCount}
+    />
+  );
+}
+
+// Demo selector
+export default function App() {
+  const [view, setView] = useState('bar');
+
+  return (
+    <div>
+      <div style={{
+        position: 'fixed',
+        top: 10,
+        right: 10,
+        zIndex: 1000,
+        display: 'flex',
+        gap: '8px',
+        backgroundColor: 'white',
+        padding: '8px',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+      }}>
+        <button
+          onClick={() => setView('bar')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: view === 'bar' ? '#1e293b' : '#e2e8f0',
+            color: view === 'bar' ? 'white' : '#64748b',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          🍺 Bar
+        </button>
+        <button
+          onClick={() => setView('kitchen')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: view === 'kitchen' ? '#dc2626' : '#e2e8f0',
+            color: view === 'kitchen' ? 'white' : '#64748b',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          🍽️ Kitchen
+        </button>
+        <button
+          onClick={() => setView('chicha')}
+          style={{
+            padding: '8px 16px',
+            borderRadius: '8px',
+            border: 'none',
+            backgroundColor: view === 'chicha' ? '#7c3aed' : '#e2e8f0',
+            color: view === 'chicha' ? 'white' : '#64748b',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          💨 Chicha
+        </button>
+      </div>
+      
+      {view === 'bar' && <BarmanOrders />}
+      {view === 'kitchen' && <KitchenOrders />}
+      {view === 'chicha' && <ChichaOrders />}
+    </div>
+  );
+}
+
+// Export individual components for use in your app
+export { BarmanOrders, KitchenOrders, ChichaOrders };
