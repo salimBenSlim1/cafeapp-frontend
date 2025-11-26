@@ -10,12 +10,65 @@ export default function LoginPage() {
   const [loginSuccess, setLoginSuccess] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [errors, setErrors] = useState({});
-  const navigate=useNavigate()
+  const [locationStatus, setLocationStatus] = useState(null);
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    
   });
+
+  const getUserLocation = () => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        console.warn('Geolocation is not supported');
+        setLocationStatus('unavailable');
+        resolve(null);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setLocationStatus('granted');
+          resolve({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.warn('Location access denied or failed:', error.message);
+          setLocationStatus('denied');
+          resolve(null);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 5000,
+          maximumAge: 0
+        }
+      );
+    });
+  };
+
+  const LocationIndicator = () => {
+    if (!locationStatus) return null;
+    
+    return (
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm mt-2 ${
+        locationStatus === 'granted' 
+          ? 'bg-green-500/10 text-green-400 border border-green-500/30' 
+          : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
+      }`}>
+        <div className={`w-2 h-2 rounded-full ${
+          locationStatus === 'granted' ? 'bg-green-400' : 'bg-yellow-400'
+        }`}></div>
+        <span>
+          {locationStatus === 'granted' 
+            ? '📍 Location detected' 
+            : '⚠️ Location not available (optional)'}
+        </span>
+      </div>
+    );
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -51,7 +104,7 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) return;
@@ -59,24 +112,58 @@ export default function LoginPage() {
     setIsLoading(true);
     setLoginError('');
     
-    axios.post(`${process.env.REACT_APP_API_URL}/login`,formData)
-    .then(r=>{
-      setAccessToken(r.data.accessToken)
+    try {
+      // Try to get user's location (won't block if denied)
+      const location = await getUserLocation();
+      
+      // Prepare headers
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Add location to headers if available
+      if (location) {
+        headers['X-User-Latitude'] = location.latitude;
+        headers['X-User-Longitude'] = location.longitude;
+        console.log('Sending location with login request');
+      } else {
+        console.log('Location not available - continuing without it');
+      }
+      
+      // Make login request with location headers
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/login`,
+        formData,
+        { headers }
+      );
+      
+      setAccessToken(response.data.accessToken);
       setIsLoading(false);
       setLoginSuccess(true);
       
+      // Optional: Check if location was set
+      if (location && response.data.cafe?.locationSet === false) {
+        console.log('✅ Café location has been set successfully');
+      }
+      
       setTimeout(() => {
-        navigate('/admin')
+        navigate('/admin');
       }, 2000);
-    })
-    .catch(err=>{
+      
+    } catch (err) {
       console.log(err);
       setIsLoading(false);
       
       // Handle different error types
       if (err.response) {
         // Server responded with error status
-        if (err.response.status === 401 || err.response.status === 400) {
+        if (err.response.status === 403) {
+          // Subscription expired
+          setLoginError('Your subscription has expired. Redirecting to subscription page...');
+          setTimeout(() => {
+            window.location.href = err.response.data.redirectTo || 'https://cafeapp-frontend.vercel.app/subscription';
+          }, 2000);
+        } else if (err.response.status === 401 || err.response.status === 400) {
           setLoginError('Incorrect email or password. Please try again.');
         } else if (err.response.status === 404) {
           setLoginError('Account not found. Please check your email.');
@@ -90,7 +177,7 @@ export default function LoginPage() {
         // Other errors
         setLoginError('An unexpected error occurred. Please try again.');
       }
-    })
+    }
   };
 
   if (loginSuccess) {
@@ -281,9 +368,8 @@ export default function LoginPage() {
                   <AlertCircle size={14} /> {errors.password}
                 </p>
               )}
+              <LocationIndicator />
             </div>
-
-       
 
             <button
               type="button"
