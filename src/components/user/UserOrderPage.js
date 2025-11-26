@@ -4,7 +4,32 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import ChatbotWaiter from '../ChatbotWaiter';
+const getUserLocation = () => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by your browser'));
+      return;
+    }
 
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy
+        });
+      },
+      (error) => {
+        reject(error);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
+  });
+};
 function UserOrderPage() {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -51,70 +76,92 @@ function UserOrderPage() {
     }
   }, [orders]);
   const [cafeName,setCafeName]=useState(null)
-  useEffect(() => {
-    const initializeSession = async () => {
-      try {
-        const existingToken = localStorage.getItem('userToken');
-        
-        if (existingToken && !qrKey) {
-          try {
-            const response = await axios.get(`${API_BASE}/getUserItems`, {
-              headers: { 'Authorization': `Bearer ${existingToken}` }
-            });
-            setCafeName(response?.data[0]?.Cafe?.name)
-            setProducts(response.data);
-            setFilteredProducts(response.data);
-            setSessionActive(true);
-            setLoading(false);
-            return;
-          } catch (err) {
-            console.log('Existing token invalid, clearing...');
-            localStorage.removeItem('userToken');
-          }
-        }
-
-        if (!qrKey) {
-          console.log("No QR key and no valid token");
+ useEffect(() => {
+  const initializeSession = async () => {
+    try {
+      const existingToken = localStorage.getItem('userToken');
+      
+      if (existingToken && !qrKey) {
+        try {
+          const response = await axios.get(`${API_BASE}/getUserItems`, {
+            headers: { 'Authorization': `Bearer ${existingToken}` }
+          });
+          setCafeName(response?.data[0]?.Cafe?.name)
+          setProducts(response.data);
+          setFilteredProducts(response.data);
+          setSessionActive(true);
           setLoading(false);
-          setSessionActive(false);
           return;
+        } catch (err) {
+          console.log('Existing token invalid, clearing...');
+          localStorage.removeItem('userToken');
         }
+      }
 
-        const response = await axios.get(`${API_BASE}/start-session`, {
-          params: { key: qrKey }
-        });
-        
-        console.log('Session started:', response.data);
-        const { token, cafeId, tableId } = response.data;
-        if (cafeId) sessionStorage.setItem('c',cafeId)
-        localStorage.setItem('userToken', token);
-        if (tableId) {
-          sessionStorage.setItem('tai', tableId);
-        }
-
-        queryParams.delete("t");
-        const newSearch = queryParams.toString();
-        const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ""}`;
-        navigate(newUrl, { replace: true });
-
-        await loadProducts();
-
-      } catch (err) {
-        console.error('Session initialization failed:', err);
-        if (err.response?.status === 404) {
-          alert('Invalid QR code. Please scan a valid table QR code.');
-        } else if (err.response?.status === 403) {
-          alert('This table is currently inactive. Please contact staff.');
-        } else if (err.response?.status === 410) {
-          handleSessionExpired();
-        }
+      if (!qrKey) {
+        console.log("No QR key and no valid token");
         setLoading(false);
         setSessionActive(false);
+        return;
       }
-    };
 
-    initializeSession();
-  }, []);
+      // Get user's location
+      let userLocation = null;
+      try {
+        userLocation = await getUserLocation();
+        console.log('User location:', userLocation);
+      } catch (locationError) {
+        console.error('Location error:', locationError);
+        alert('Location access is required to verify you are at the café. Please enable location services and try again.');
+        setLoading(false);
+        setSessionActive(false);
+        return;
+      }
+
+      // Start session with location data
+      const response = await axios.get(`${API_BASE}/start-session`, {
+        params: { key: qrKey },
+        headers: {
+          'X-User-Latitude': userLocation.latitude,
+          'X-User-Longitude': userLocation.longitude,
+          'X-Location-Accuracy': userLocation.accuracy
+        }
+      });
+      
+      const { token, cafeId, tableId } = response.data;
+      if (cafeId) sessionStorage.setItem('c',cafeId)
+      localStorage.setItem('userToken', token);
+      if (tableId) {
+        sessionStorage.setItem('tai', tableId);
+      }
+
+      queryParams.delete("t");
+      const newSearch = queryParams.toString();
+      const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ""}`;
+      navigate(newUrl, { replace: true });
+
+      await loadProducts();
+
+    } catch (err) {
+      console.error('Session initialization failed:', err);
+      if (err.response?.status === 404) {
+        alert('Invalid QR code. Please scan a valid table QR code.');
+      } else if (err.response?.status === 403) {
+        const message = err.response?.data?.error || 'This table is currently inactive. Please contact staff.';
+        alert(message);
+      } else if (err.response?.status === 410) {
+        handleSessionExpired();
+      } else if (err.response?.status === 451) {
+        // Location too far from café
+        alert('You appear to be too far from the café. Please make sure you are at the location and try again.');
+      }
+      setLoading(false);
+      setSessionActive(false);
+    }
+  };
+
+  initializeSession();
+}, []);
 
   useEffect(() => {
     if (!sessionActive) return;

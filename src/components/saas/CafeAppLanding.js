@@ -101,7 +101,7 @@ export default function CafeAppLanding() {
       <nav className="fixed top-0 w-full z-50 glass">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-2xl font-bold">
-            <Coffee className="text-blue-400" size={32} />
+           <img className='w-[50px]' src='/images/coffai1.png'/>
             <span className="gradient-text">CoffAI</span>
           </div>
           
@@ -492,7 +492,7 @@ export default function CafeAppLanding() {
       <footer className="border-t border-white/10 py-12 px-6">
         <div className="max-w-6xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 text-2xl font-bold mb-6">
-            <Coffee className="text-blue-400" size={32} />
+            <img className='w-[50px]' src='/images/coffai1.png'/>
             <span className="gradient-text">CoffAI</span>
           </div>
           <p className="text-gray-400 mb-6">The digital solution for modern cafes</p>

@@ -206,7 +206,7 @@ export default function LoginPage() {
         <div className="max-w-md w-full">
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 text-3xl font-bold mb-4">
-              <Coffee className="text-blue-400" size={40} />
+              <img className='w-[50px]' src='/images/coffai1.png'/>
               <span className="gradient-text">CoffAI</span>
             </div>
             <h1 className="text-3xl font-bold mb-2">
