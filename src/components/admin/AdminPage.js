@@ -124,13 +124,13 @@ export default function ProtectedAdminDashboard() {
   const pricingPlans = [
     {
       name: 'Basic',
-      price: 39,
+      price: 69,
       features: ['Jusqu\'à 20 tables', 'Menu QR illimité', 'Dashboard simple', 'Support par email'],
       color: 'from-blue-600 to-cyan-600'
     },
     {
       name: 'VIP',
-      price: 59,
+      price: 139,
       features: ['Tables illimitées', 'QR personnalisés', 'AI Insights avancés', 'Support prioritaire 24/7', 'Thèmes premium'],
       color: 'from-purple-600 to-pink-600',
       popular: true

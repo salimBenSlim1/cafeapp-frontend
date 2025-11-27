@@ -161,7 +161,7 @@ export default function LoginPage() {
           // Subscription expired
           setLoginError('Your subscription has expired. Redirecting to subscription page...');
           setTimeout(() => {
-            window.location.href = err.response.data.redirectTo || 'https://cafeapp-frontend.vercel.app/subscription';
+            window.location.href = err.response.data.redirectTo || 'https://coffai.tn/login';
           }, 2000);
         } else if (err.response.status === 401 || err.response.status === 400) {
           setLoginError('Incorrect email or password. Please try again.');

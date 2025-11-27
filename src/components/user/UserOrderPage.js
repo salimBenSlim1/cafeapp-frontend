@@ -356,7 +356,7 @@ function UserOrderPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <div className="mb-8">
-            <img src="/images/coffAI.png" alt="CoffAI Logo" className="w-48 h-48 mx-auto" />
+            <img src="/images/coffai1.png" alt="CoffAI Logo" className="w-48 h-48 mx-auto" />
           </div>
           <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
             <h1 className="text-3xl font-bold text-white mb-4">Session Expired</h1>
@@ -392,7 +392,7 @@ function UserOrderPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <div className="mb-8">
-            <img src="/images/coffAI.png" alt="CoffAI Logo" className="w-48 h-48 mx-auto" />
+            <img src="/images/coffai1.png" alt="CoffAI Logo" className="w-48 h-48 mx-auto" />
           </div>
           <h1 className="text-3xl font-bold text-white mb-4">Welcome to CoffAI</h1>
           <p className="text-blue-200 text-lg mb-6">
@@ -462,7 +462,7 @@ function UserOrderPage() {
         <div className="mb-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <img src="/images/coffAI.png" alt="CoffAI Logo" className="w-16 h-16" />
+              <img src="/images/coffai1.png" alt="CoffAI Logo" className="w-16 h-16" />
               <div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">{cafeName} Menu</h1>
                 <p className="text-blue-300 text-sm md:text-base">Table {sessionStorage.getItem('tai') || 'N/A'}</p>
