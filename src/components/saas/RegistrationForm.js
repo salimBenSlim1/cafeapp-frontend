@@ -257,8 +257,8 @@ export default function RegistrationForm() {
   </label>
 <div className="grid md:grid-cols-3 gap-4">
   {[
-    { value: 'basic', name: 'Basic', price: '69 TND', features: 'Up to 20 tables' },
-    { value: 'pro', name: 'Pro + AI', price: '139 TND', features: '50 tables + AI Agent', popular: true },
+    { value: 'basic', name: 'Basic', price: '19 TND', features: 'Up to 20 tables' },
+    { value: 'pro', name: 'Pro + AI', price: '39 TND', features: '50 tables + AI Agent', popular: true },
     { value: 'custom', name: 'Customize', price: 'Custom', features: 'Tell us your table count', premium: true, needsInfo: true }
   ].map(plan => (
     <label
