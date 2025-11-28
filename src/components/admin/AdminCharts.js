@@ -472,7 +472,7 @@ export default function AdminCharts() {
               wrapperStyle={{ color: '#94a3b8' }}
               formatter={(value, entry) => (
                 <span style={{ color: '#94a3b8' }}>
-                  {entry.payload.name} ({entry.payload.totalRevenue.toFixed(2)} TND)
+                  {entry.payload.name} ({entry?.payload?.totalRevenue?.toFixed(2)} TND)
                 </span>
               )}
             />
