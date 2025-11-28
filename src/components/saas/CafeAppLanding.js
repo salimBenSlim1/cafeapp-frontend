@@ -324,7 +324,7 @@ export default function CafeAppLanding() {
     <div className="text-center mb-6">
       <h3 className="text-2xl font-bold mb-3">Basic</h3>
       <div className="flex items-end justify-center gap-2 mb-3">
-        <span className="text-5xl font-bold text-white">69</span>
+        <span className="text-5xl font-bold text-white">19</span>
         <span className="text-xl text-gray-400 mb-2">TND/mo</span>
       </div>
       <p className="text-gray-400 text-sm">Perfect for small cafes</p>
@@ -366,7 +366,7 @@ export default function CafeAppLanding() {
     <div className="text-center mb-6 pt-3">
       <h3 className="text-2xl font-bold mb-3">Pro + AI</h3>
       <div className="flex items-end justify-center gap-2 mb-3">
-        <span className="text-5xl font-bold gradient-text">139</span>
+        <span className="text-5xl font-bold gradient-text">39</span>
         <span className="text-xl text-gray-400 mb-2">TND/mo</span>
       </div>
       <p className="text-gray-400 text-sm">AI-powered insights</p>
