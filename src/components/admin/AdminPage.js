@@ -100,16 +100,6 @@ export default function ProtectedAdminDashboard() {
       requiredPlan: 'Basic'
     },
     {
-      id: 5,
-      title: 'AI Agent',
-      description: 'Smart assistant & automation',
-      path: '/admin/agent',
-      icon: Sparkles,
-      gradient: 'from-indigo-500 to-indigo-700',
-      glowColor: 'indigo-500',
-      requiredPlan: 'VIP' // VIP only
-    },
-    {
       id: 6,
       title: 'QR Codes',
       description: 'Generate table QR codes',
@@ -130,7 +120,7 @@ export default function ProtectedAdminDashboard() {
     },
     {
       name: 'VIP',
-      price: 139,
+      price: 89,
       features: ['Tables illimitées', 'QR personnalisés', 'AI Insights avancés', 'Support prioritaire 24/7', 'Thèmes premium'],
       color: 'from-purple-600 to-pink-600',
       popular: true
