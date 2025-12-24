@@ -362,7 +362,7 @@ function BarmanOrders() {
       
       // Get the actual data - handle both direct response and nested data
       let data = response.data;
-      console.log(data,"aze")
+      
       // Sometimes the data might be nested in a 'data' property
       if (data.data && Array.isArray(data.data)) {
         data = data.data;
