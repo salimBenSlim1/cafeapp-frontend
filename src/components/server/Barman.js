@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
+import axios from 'axios';
 
 // Shared Order Display Component
 function OrderDisplay({ orders, title, color, onDismiss, notificationCount }) {
@@ -298,6 +299,7 @@ function BarmanOrders() {
   const [orders, setOrders] = useState([]);
   const [notificationCount, setNotificationCount] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [error, setError] = useState(null);
   const audioRef = useRef(null);
   const socketRef = useRef(null);
 
@@ -323,18 +325,60 @@ function BarmanOrders() {
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/server/getOrders`,
+      setError(null);
+      const apiUrl = process.env.REACT_APP_API_URL;
+      const serverToken = localStorage.getItem('serverToken');
+      const cafeId = localStorage.getItem('cafeId');
+      
+      console.log('🔍 Debug Info:');
+      console.log('API URL:', apiUrl);
+      console.log('Server Token exists:', !!serverToken);
+      console.log('Cafe ID:', cafeId);
+      console.log('Full URL:', `${apiUrl}/server/getOrders`);
+      
+      if (!serverToken) {
+        const errorMsg = 'No server token found. Please log in again.';
+        console.error('❌', errorMsg);
+        setError(errorMsg);
+        return;
+      }
+      
+      if (!apiUrl) {
+        const errorMsg = 'API URL not configured. Check environment variables.';
+        console.error('❌', errorMsg);
+        setError(errorMsg);
+        return;
+      }
+      
+      // Use axios like ServerDash does
+      const response = await axios.get(
+        `${apiUrl}/server/getOrders`,
         {
-          headers: { 'server-token': localStorage.getItem('serverToken') }
+          headers: { 
+            'server-token': serverToken
+          }
         }
       );
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      const data = response.data;
+      console.log('📦 Raw orders received:', data.length);
       
-      const data = await response.json();
+      // Debug: Log all unique categories
+      const allCategories = new Set();
+      data.forEach(order => {
+        order.OrderItems?.forEach(item => {
+          if (item.Item?.category) {
+            allCategories.add(item.Item.category);
+          }
+        });
+      });
+      console.log('🏷️ All categories found:', Array.from(allCategories));
+      
+      // Debug: Log first pending order structure
+      const firstPending = data.find(o => o.status === 'pending');
+      if (firstPending) {
+        console.log('📋 Sample pending order:', JSON.stringify(firstPending, null, 2));
+      }
       
       const filteredOrders = data
         .filter(order => {
@@ -351,9 +395,16 @@ function BarmanOrders() {
         }))
         .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       
+      console.log('✅ Filtered bar orders:', filteredOrders.length);
       setOrders(filteredOrders);
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('💥 Error fetching orders:', error);
+      console.error('Error details:', error.message);
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+      }
+      setError(error.response?.data?.message || error.message || 'Failed to fetch orders');
     }
   };
 
@@ -419,6 +470,28 @@ function BarmanOrders() {
 
   return (
     <div>
+      {/* Error Banner */}
+      {error && (
+        <div style={{
+          position: 'fixed',
+          top: 60,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 1001,
+          backgroundColor: '#ef4444',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '12px',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+          maxWidth: '90%',
+          textAlign: 'center'
+        }}>
+          ⚠️ {error}
+        </div>
+      )}
+      
       {/* Connection Status Indicator */}
       <div style={{
         position: 'fixed',
