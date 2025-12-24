@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { io } from 'socket.io-client';
 
 // Shared Order Display Component
 function OrderDisplay({ orders, title, color, onDismiss, notificationCount }) {
@@ -296,7 +297,9 @@ function OrderDisplay({ orders, title, color, onDismiss, notificationCount }) {
 function BarmanOrders() {
   const [orders, setOrders] = useState([]);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const audioRef = useRef(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
@@ -326,6 +329,10 @@ function BarmanOrders() {
           headers: { 'server-token': localStorage.getItem('serverToken') }
         }
       );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       
       const data = await response.json();
       
@@ -357,30 +364,52 @@ function BarmanOrders() {
   useEffect(() => {
     const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
     
-    // Dynamically import socket.io-client
-    import('socket.io-client').then(({ io }) => {
-      const socket = io(SOCKET_URL, {
-        transports: ['websocket'],
-        reconnection: true,
-      });
-
-      socket.on('connect', () => {
-        const cafeId = localStorage.getItem('cafeId');
-        if (cafeId) socket.emit('joinCafe', { cafeId });
-      });
-
-      socket.on('newOrder', () => {
-        setNotificationCount(prev => prev + 1);
-        fetchOrders();
-        playNotificationSound();
-      });
-
-      socket.on('orderStatusUpdated', () => {
-        fetchOrders();
-      });
-
-      return () => socket.disconnect();
+    console.log('Connecting to socket at:', SOCKET_URL);
+    
+    socketRef.current = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
+
+    socketRef.current.on('connect', () => {
+      console.log('✅ Socket connected');
+      setConnectionStatus('connected');
+      const cafeId = localStorage.getItem('cafeId');
+      if (cafeId) {
+        console.log('Joining cafe:', cafeId);
+        socketRef.current.emit('joinCafe', { cafeId });
+      }
+    });
+
+    socketRef.current.on('disconnect', () => {
+      console.log('❌ Socket disconnected');
+      setConnectionStatus('disconnected');
+    });
+
+    socketRef.current.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setConnectionStatus('error');
+    });
+
+    socketRef.current.on('newOrder', (data) => {
+      console.log('📦 New order received:', data);
+      setNotificationCount(prev => prev + 1);
+      fetchOrders();
+      playNotificationSound();
+    });
+
+    socketRef.current.on('orderStatusUpdated', (data) => {
+      console.log('🔄 Order status updated:', data);
+      fetchOrders();
+    });
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
   }, []);
 
   const handleDismiss = (orderId) => {
@@ -389,13 +418,48 @@ function BarmanOrders() {
   };
 
   return (
-    <OrderDisplay 
-      orders={orders}
-      title="Bar Orders"
-      color="#1e293b"
-      onDismiss={handleDismiss}
-      notificationCount={notificationCount}
-    />
+    <div>
+      {/* Connection Status Indicator */}
+      <div style={{
+        position: 'fixed',
+        bottom: 10,
+        left: 10,
+        zIndex: 1000,
+        backgroundColor: connectionStatus === 'connected' ? '#10b981' : '#ef4444',
+        color: 'white',
+        padding: '8px 12px',
+        borderRadius: '20px',
+        fontSize: '12px',
+        fontWeight: 'bold',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px'
+      }}>
+        <div style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: 'white',
+          animation: connectionStatus === 'connected' ? 'none' : 'blink 1s infinite'
+        }}></div>
+        {connectionStatus === 'connected' ? 'Connected' : 'Connecting...'}
+      </div>
+      
+      <OrderDisplay 
+        orders={orders}
+        title="Bar Orders"
+        color="#1e293b"
+        onDismiss={handleDismiss}
+        notificationCount={notificationCount}
+      />
+      
+      <style>{`
+        @keyframes blink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0.3; }
+        }
+      `}</style>
+    </div>
   );
 }
 
@@ -404,6 +468,7 @@ function KitchenOrders() {
   const [orders, setOrders] = useState([]);
   const [notificationCount, setNotificationCount] = useState(0);
   const audioRef = useRef(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
@@ -464,29 +529,31 @@ function KitchenOrders() {
   useEffect(() => {
     const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
     
-    import('socket.io-client').then(({ io }) => {
-      const socket = io(SOCKET_URL, {
-        transports: ['websocket'],
-        reconnection: true,
-      });
-
-      socket.on('connect', () => {
-        const cafeId = localStorage.getItem('cafeId');
-        if (cafeId) socket.emit('joinCafe', { cafeId });
-      });
-
-      socket.on('newOrder', () => {
-        setNotificationCount(prev => prev + 1);
-        fetchOrders();
-        playNotificationSound();
-      });
-
-      socket.on('orderStatusUpdated', () => {
-        fetchOrders();
-      });
-
-      return () => socket.disconnect();
+    socketRef.current = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
+
+    socketRef.current.on('connect', () => {
+      const cafeId = localStorage.getItem('cafeId');
+      if (cafeId) socketRef.current.emit('joinCafe', { cafeId });
+    });
+
+    socketRef.current.on('newOrder', () => {
+      setNotificationCount(prev => prev + 1);
+      fetchOrders();
+      playNotificationSound();
+    });
+
+    socketRef.current.on('orderStatusUpdated', () => {
+      fetchOrders();
+    });
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
   }, []);
 
   const handleDismiss = (orderId) => {
@@ -510,6 +577,7 @@ function ChichaOrders() {
   const [orders, setOrders] = useState([]);
   const [notificationCount, setNotificationCount] = useState(0);
   const audioRef = useRef(null);
+  const socketRef = useRef(null);
 
   useEffect(() => {
     audioRef.current = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
@@ -566,29 +634,31 @@ function ChichaOrders() {
   useEffect(() => {
     const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
     
-    import('socket.io-client').then(({ io }) => {
-      const socket = io(SOCKET_URL, {
-        transports: ['websocket'],
-        reconnection: true,
-      });
-
-      socket.on('connect', () => {
-        const cafeId = localStorage.getItem('cafeId');
-        if (cafeId) socket.emit('joinCafe', { cafeId });
-      });
-
-      socket.on('newOrder', () => {
-        setNotificationCount(prev => prev + 1);
-        fetchOrders();
-        playNotificationSound();
-      });
-
-      socket.on('orderStatusUpdated', () => {
-        fetchOrders();
-      });
-
-      return () => socket.disconnect();
+    socketRef.current = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
+
+    socketRef.current.on('connect', () => {
+      const cafeId = localStorage.getItem('cafeId');
+      if (cafeId) socketRef.current.emit('joinCafe', { cafeId });
+    });
+
+    socketRef.current.on('newOrder', () => {
+      setNotificationCount(prev => prev + 1);
+      fetchOrders();
+      playNotificationSound();
+    });
+
+    socketRef.current.on('orderStatusUpdated', () => {
+      fetchOrders();
+    });
+
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
   }, []);
 
   const handleDismiss = (orderId) => {
@@ -679,5 +749,4 @@ export default function App() {
   );
 }
 
-// Export individual components for use in your app
 export { BarmanOrders, KitchenOrders, ChichaOrders };
