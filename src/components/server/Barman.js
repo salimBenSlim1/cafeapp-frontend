@@ -443,7 +443,7 @@ function BarmanOrders() {
             })
           };
         })
-        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       
       console.log('✅ Filtered bar orders:', filteredOrders.length);
       if (filteredOrders.length > 0) {
@@ -745,7 +745,7 @@ function ChichaOrders() {
           ...order,
           OrderItems: order.OrderItems.filter(item => item.Item.category === 'smoking')
         }))
-        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       
       setOrders(filteredOrders);
     } catch (error) {
