@@ -323,34 +323,24 @@ function BarmanOrders() {
     }
   };
 
+  const [refresh, setRefresh] = useState(false);
+
   const fetchOrders = async () => {
     try {
       setError(null);
       const apiUrl = process.env.REACT_APP_API_URL;
       const serverToken = localStorage.getItem('serverToken');
-      const cafeId = localStorage.getItem('cafeId');
-      
-      console.log('🔍 Debug Info:');
-      console.log('API URL:', apiUrl);
-      console.log('Server Token exists:', !!serverToken);
-      console.log('Cafe ID:', cafeId);
-      console.log('Full URL:', `${apiUrl}/server/getOrders`);
       
       if (!serverToken) {
-        const errorMsg = 'No server token found. Please log in again.';
-        console.error('❌', errorMsg);
-        setError(errorMsg);
+        setError('No server token found. Please log in again.');
         return;
       }
       
       if (!apiUrl) {
-        const errorMsg = 'API URL not configured. Check environment variables.';
-        console.error('❌', errorMsg);
-        setError(errorMsg);
+        setError('API URL not configured. Check environment variables.');
         return;
       }
       
-      // Use axios like ServerDash does
       const response = await axios.get(
         `${apiUrl}/server/getOrders`,
         {
@@ -360,35 +350,38 @@ function BarmanOrders() {
         }
       );
       
-      // Get the actual data - handle both direct response and nested data
       let data = response.data;
       
-      // Sometimes the data might be nested in a 'data' property
       if (data.data && Array.isArray(data.data)) {
         data = data.data;
       }
       
-      // Ensure it's an array
       if (!Array.isArray(data)) {
-        console.error('❌ Response is not an array:', data);
         setError('Invalid response format from server');
         return;
       }
       
-      console.log('📦 Raw orders received:', data.length);
+      // Filter for bar orders: pending + (coffee OR drink)
+      const filteredOrders = data
+        .filter(order => {
+          if (order.status !== 'pending') return false;
+          
+          const orderItems = order.OrderItems || [];
+          return orderItems.some(orderItem => {
+            const category = orderItem.Item?.category;
+            return category === 'drink' || category === 'coffee';
+          });
+        })
+        .map(order => ({
+          ...order,
+          OrderItems: (order.OrderItems || []).filter(orderItem => {
+            const category = orderItem.Item?.category;
+            return category === 'drink' || category === 'coffee';
+          })
+        }));
       
-      // Filter for pending orders only - exactly like ServerDash
-      const filteredOrders = data.filter(order => order.status === 'pending');
-      
-      console.log('✅ Pending orders:', filteredOrders.length);
       setOrders(filteredOrders);
     } catch (error) {
-      console.error('💥 Error fetching orders:', error);
-      console.error('Error details:', error.message);
-      if (error.response) {
-        console.error('Response data:', error.response.data);
-        console.error('Response status:', error.response.status);
-      }
       setError(error.response?.data?.message || error.message || 'Failed to fetch orders');
     }
   };
@@ -400,8 +393,6 @@ function BarmanOrders() {
   useEffect(() => {
     const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
     
-    console.log('Connecting to socket at:', SOCKET_URL);
-    
     socketRef.current = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
       reconnection: true,
@@ -410,34 +401,28 @@ function BarmanOrders() {
     });
 
     socketRef.current.on('connect', () => {
-      console.log('✅ Socket connected');
       setConnectionStatus('connected');
       const cafeId = localStorage.getItem('cafeId');
       if (cafeId) {
-        console.log('Joining cafe:', cafeId);
         socketRef.current.emit('joinCafe', { cafeId });
       }
     });
 
     socketRef.current.on('disconnect', () => {
-      console.log('❌ Socket disconnected');
       setConnectionStatus('disconnected');
     });
 
-    socketRef.current.on('connect_error', (error) => {
-      console.error('Socket connection error:', error);
+    socketRef.current.on('connect_error', () => {
       setConnectionStatus('error');
     });
 
-    socketRef.current.on('newOrder', (data) => {
-      console.log('📦 New order received:', data);
+    socketRef.current.on('newOrder', () => {
       setNotificationCount(prev => prev + 1);
       fetchOrders();
       playNotificationSound();
     });
 
-    socketRef.current.on('orderStatusUpdated', (data) => {
-      console.log('🔄 Order status updated:', data);
+    socketRef.current.on('orderStatusUpdated', () => {
       fetchOrders();
     });
 
@@ -548,41 +533,48 @@ function KitchenOrders() {
     }
   };
 
+  const [refresh, setRefresh] = useState(false);
+
   const fetchOrders = async () => {
     try {
-      const response = await fetch(
+      const response = await axios.get(
         `${process.env.REACT_APP_API_URL}/server/getOrders`,
         {
           headers: { 'server-token': localStorage.getItem('serverToken') }
         }
       );
       
-      const data = await response.json();
+      let data = response.data;
       
+      if (data.data && Array.isArray(data.data)) {
+        data = data.data;
+      }
+      
+      // Filter for kitchen orders: pending + (food OR dessert)
       const filteredOrders = data
         .filter(order => {
           if (order.status !== 'pending') return false;
-          return order.OrderItems.some(item => 
-            item.Item.category === 'food' || item.Item.category === 'dessert'
+          const orderItems = order.OrderItems || [];
+          return orderItems.some(item => 
+            item.Item?.category === 'food' || item.Item?.category === 'dessert'
           );
         })
         .map(order => ({
           ...order,
-          OrderItems: order.OrderItems.filter(item => 
-            item.Item.category === 'food' || item.Item.category === 'dessert'
+          OrderItems: (order.OrderItems || []).filter(item => 
+            item.Item?.category === 'food' || item.Item?.category === 'dessert'
           )
-        }))
-        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+        }));
       
       setOrders(filteredOrders);
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      // Silent error handling
     }
   };
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
@@ -601,12 +593,12 @@ function KitchenOrders() {
 
     socketRef.current.on('newOrder', () => {
       setNotificationCount(prev => prev + 1);
-      fetchOrders();
+      setRefresh(prev => !prev);
       playNotificationSound();
     });
 
     socketRef.current.on('orderStatusUpdated', () => {
-      fetchOrders();
+      setRefresh(prev => !prev);
     });
 
     return () => {
@@ -657,37 +649,44 @@ function ChichaOrders() {
     }
   };
 
+  const [refresh, setRefresh] = useState(false);
+
   const fetchOrders = async () => {
     try {
-      const response = await fetch(
+      const response = await axios.get(
         `${process.env.REACT_APP_API_URL}/server/getOrders`,
         {
           headers: { 'server-token': localStorage.getItem('serverToken') }
         }
       );
       
-      const data = await response.json();
+      let data = response.data;
       
+      if (data.data && Array.isArray(data.data)) {
+        data = data.data;
+      }
+      
+      // Filter for chicha orders: pending + smoking category
       const filteredOrders = data
         .filter(order => {
           if (order.status !== 'pending') return false;
-          return order.OrderItems.some(item => item.Item.category === 'smoking');
+          const orderItems = order.OrderItems || [];
+          return orderItems.some(item => item.Item?.category === 'smoking');
         })
         .map(order => ({
           ...order,
-          OrderItems: order.OrderItems.filter(item => item.Item.category === 'smoking')
-        }))
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          OrderItems: (order.OrderItems || []).filter(item => item.Item?.category === 'smoking')
+        }));
       
       setOrders(filteredOrders);
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      // Silent error handling
     }
   };
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [refresh]);
 
   useEffect(() => {
     const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
@@ -706,12 +705,12 @@ function ChichaOrders() {
 
     socketRef.current.on('newOrder', () => {
       setNotificationCount(prev => prev + 1);
-      fetchOrders();
+      setRefresh(prev => !prev);
       playNotificationSound();
     });
 
     socketRef.current.on('orderStatusUpdated', () => {
-      fetchOrders();
+      setRefresh(prev => !prev);
     });
 
     return () => {
