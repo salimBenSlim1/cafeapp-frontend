@@ -360,42 +360,95 @@ function BarmanOrders() {
         }
       );
       
-      const data = response.data;
-      console.log('📦 Raw orders received:', data.length);
+      // Get the actual data - handle both direct response and nested data
+      let data = response.data;
       
-      // Debug: Log all unique categories
+      // Sometimes the data might be nested in a 'data' property
+      if (data.data && Array.isArray(data.data)) {
+        data = data.data;
+      }
+      
+      // Ensure it's an array
+      if (!Array.isArray(data)) {
+        console.error('❌ Response is not an array:', data);
+        setError('Invalid response format from server');
+        return;
+      }
+      
+      console.log('📦 Raw orders received:', data.length);
+      console.log('📦 First order raw data:', data[0]);
+      
+      // Debug: Check every single item for category
+      let itemsWithCategory = 0;
+      let itemsWithoutCategory = 0;
       const allCategories = new Set();
-      data.forEach(order => {
-        order.OrderItems?.forEach(item => {
-          if (item.Item?.category) {
-            allCategories.add(item.Item.category);
+      const allItemNames = new Set();
+      
+      data.forEach((order, orderIndex) => {
+        // Handle both array and object responses
+        const orderItems = order.OrderItems || order.orderItems || [];
+        
+        orderItems.forEach((orderItem, itemIndex) => {
+          // Handle different possible structures
+          const item = orderItem.Item || orderItem.item || orderItem;
+          const itemName = item?.name || 'Unknown';
+          const itemCategory = item?.category;
+          
+          allItemNames.add(itemName);
+          
+          if (itemCategory) {
+            itemsWithCategory++;
+            allCategories.add(itemCategory);
+            if (orderIndex === 0 && itemIndex === 0) {
+              console.log(`✅ First item "${itemName}" has category: "${itemCategory}"`);
+              console.log('Full item structure:', JSON.stringify(item, null, 2));
+            }
+          } else {
+            itemsWithoutCategory++;
+            if (orderIndex === 0 && itemIndex === 0) {
+              console.log(`❌ First item "${itemName}" is MISSING category field`);
+              console.log('Full item structure:', JSON.stringify(item, null, 2));
+            }
           }
         });
       });
+      
+      console.log('📊 Category Statistics:');
+      console.log(`  ✅ Items WITH category: ${itemsWithCategory}`);
+      console.log(`  ❌ Items WITHOUT category: ${itemsWithoutCategory}`);
       console.log('🏷️ All categories found:', Array.from(allCategories));
+      console.log('📝 Sample item names:', Array.from(allItemNames).slice(0, 10));
       
-      // Debug: Log first pending order structure
-      const firstPending = data.find(o => o.status === 'pending');
-      if (firstPending) {
-        console.log('📋 Sample pending order:', JSON.stringify(firstPending, null, 2));
-      }
-      
+      // Filter for bar orders - handle different structures
       const filteredOrders = data
         .filter(order => {
           if (order.status !== 'pending') return false;
-          return order.OrderItems.some(item => 
-            item.Item.category === 'drink' || item.Item.category === 'coffee'
-          );
+          
+          const orderItems = order.OrderItems || order.orderItems || [];
+          return orderItems.some(orderItem => {
+            const item = orderItem.Item || orderItem.item || orderItem;
+            const category = item?.category;
+            return category === 'drink' || category === 'coffee';
+          });
         })
-        .map(order => ({
-          ...order,
-          OrderItems: order.OrderItems.filter(item => 
-            item.Item.category === 'drink' || item.Item.category === 'coffee'
-          )
-        }))
+        .map(order => {
+          const orderItems = order.OrderItems || order.orderItems || [];
+          
+          return {
+            ...order,
+            OrderItems: orderItems.filter(orderItem => {
+              const item = orderItem.Item || orderItem.item || orderItem;
+              const category = item?.category;
+              return category === 'drink' || category === 'coffee';
+            })
+          };
+        })
         .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
       
       console.log('✅ Filtered bar orders:', filteredOrders.length);
+      if (filteredOrders.length > 0) {
+        console.log('📋 First filtered order:', filteredOrders[0]);
+      }
       setOrders(filteredOrders);
     } catch (error) {
       console.error('💥 Error fetching orders:', error);
