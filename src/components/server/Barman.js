@@ -376,79 +376,11 @@ function BarmanOrders() {
       }
       
       console.log('📦 Raw orders received:', data.length);
-      console.log('📦 First order raw data:', data[0]);
       
-      // Debug: Check every single item for category
-      let itemsWithCategory = 0;
-      let itemsWithoutCategory = 0;
-      const allCategories = new Set();
-      const allItemNames = new Set();
+      // Filter for pending orders only - exactly like ServerDash
+      const filteredOrders = data.filter(order => order.status === 'pending');
       
-      data.forEach((order, orderIndex) => {
-        // Handle both array and object responses
-        const orderItems = order.OrderItems || order.orderItems || [];
-        
-        orderItems.forEach((orderItem, itemIndex) => {
-          // Handle different possible structures
-          const item = orderItem.Item || orderItem.item || orderItem;
-          const itemName = item?.name || 'Unknown';
-          const itemCategory = item?.category;
-          
-          allItemNames.add(itemName);
-          
-          if (itemCategory) {
-            itemsWithCategory++;
-            allCategories.add(itemCategory);
-            if (orderIndex === 0 && itemIndex === 0) {
-              console.log(`✅ First item "${itemName}" has category: "${itemCategory}"`);
-              console.log('Full item structure:', JSON.stringify(item, null, 2));
-            }
-          } else {
-            itemsWithoutCategory++;
-            if (orderIndex === 0 && itemIndex === 0) {
-              console.log(`❌ First item "${itemName}" is MISSING category field`);
-              console.log('Full item structure:', JSON.stringify(item, null, 2));
-            }
-          }
-        });
-      });
-      
-      console.log('📊 Category Statistics:');
-      console.log(`  ✅ Items WITH category: ${itemsWithCategory}`);
-      console.log(`  ❌ Items WITHOUT category: ${itemsWithoutCategory}`);
-      console.log('🏷️ All categories found:', Array.from(allCategories));
-      console.log('📝 Sample item names:', Array.from(allItemNames).slice(0, 10));
-      
-      // Filter for bar orders - handle different structures
-      const filteredOrders = data
-        .filter(order => {
-          if (order.status !== 'pending') return false;
-          
-          const orderItems = order.OrderItems || order.orderItems || [];
-          return orderItems.some(orderItem => {
-            const item = orderItem.Item || orderItem.item || orderItem;
-            const category = item?.category;
-            return category === 'drink' || category === 'coffee';
-          });
-        })
-        .map(order => {
-          const orderItems = order.OrderItems || order.orderItems || [];
-          
-          return {
-            ...order,
-            OrderItems: orderItems.filter(orderItem => {
-              const item = orderItem.Item || orderItem.item || orderItem;
-              const category = item?.category;
-              return category === 'drink' || category === 'coffee';
-            })
-          };
-        })
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      
-      console.log('✅ Filtered bar orders:', filteredOrders.length);
-      if (filteredOrders.length > 0) {
-        console.log('📋 First filtered order:', filteredOrders[0]);
-      }
+      console.log('✅ Pending orders:', filteredOrders.length);
       setOrders(filteredOrders);
     } catch (error) {
       console.error('💥 Error fetching orders:', error);
