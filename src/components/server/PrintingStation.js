@@ -17,7 +17,6 @@ const PrinterStation = () => {
 
   const CAFE_ID = localStorage.getItem('cafeId');
   const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
-  const TOKEN = localStorage.getItem('token');
 
   const PUBLIC_CERT = `-----BEGIN CERTIFICATE-----
 MIIDCTCCAfGgAwIBAgIUK1qaeEfyntI1xyiU4i2BttrmDrcwDQYJKoZIhvcNAQEL
@@ -50,9 +49,9 @@ XEZLIpb+91uEC5GrDg==
   };
 
   useEffect(() => {
-    loadPrinterConfig();
     setupSocket();
     setupQZTray();
+    loadPrinterConfig();
 
     return () => {
       if (window.socket) window.socket.disconnect();
@@ -60,7 +59,7 @@ XEZLIpb+91uEC5GrDg==
         window.qz.websocket.disconnect();
       }
     };
-  }, [CAFE_ID]);
+  }, []);
 
   const setupSocket = () => {
     const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
@@ -101,7 +100,7 @@ XEZLIpb+91uEC5GrDg==
       const order = data.order;
       const transformedOrder = {
         id: order.id,
-        tableNumber: order.table?.number || order.tableNumber || 'N/A',
+        tableNumber: order.tableNumber || 'N/A',
         createdAt: order.createdAt || new Date(),
         items: (order.orderItems || []).map(item => ({
           id: item.id,
@@ -113,7 +112,11 @@ XEZLIpb+91uEC5GrDg==
       };
 
       setOrders(prev => [transformedOrder, ...prev].slice(0, 20));
-      await printOrder(transformedOrder);
+      
+      // Wait a bit for printer config to load if needed
+      setTimeout(() => {
+        printOrder(transformedOrder);
+      }, 500);
     });
   };
 
@@ -124,9 +127,11 @@ XEZLIpb+91uEC5GrDg==
         { headers: { 'server-token': localStorage.getItem('serverToken') } }
       );
 
+      console.log('📥 Loaded config from backend:', response.data.config);
+
       if (response.data.config && Object.keys(response.data.config).length > 0) {
         setPrinterConfig(response.data.config);
-        console.log('✅ Loaded printer config:', response.data.config);
+        console.log('✅ Printer config set:', response.data.config);
       }
     } catch (error) {
       console.error('❌ Failed to load printer config:', error);
@@ -135,14 +140,17 @@ XEZLIpb+91uEC5GrDg==
 
   const savePrinterConfig = async () => {
     try {
+      console.log('💾 Saving config:', tempConfig);
+      
       await axios.put(
         `${API_URL}/server/printer/config`,
         { printers: tempConfig },
         { headers: { 'server-token': localStorage.getItem('serverToken') } }
       );
       
-      setPrinterConfig(tempConfig);
+      setPrinterConfig({...tempConfig});
       setShowConfig(false);
+      console.log('✅ Config saved and updated:', tempConfig);
       alert('✅ Printer configuration saved!');
     } catch (error) {
       console.error('❌ Failed to save config:', error);
@@ -224,6 +232,7 @@ XEZLIpb+91uEC5GrDg==
 
   const printOrder = async (order) => {
     console.log('🖨️ PRINTING ORDER:', order);
+    console.log('🖨️ Current printer config:', printerConfig);
 
     if (!order.items || order.items.length === 0) {
       console.error('❌ Order has no items!');
@@ -258,44 +267,36 @@ XEZLIpb+91uEC5GrDg==
 
     await Promise.all(printPromises);
   };
+
 const printToPhysicalPrinter = async (printerType, items, order) => {
-  const printerName = printerConfig[printerType];
+  // ✅ Get fresh config from backend instead of relying on state
+  let printerName;
   
-  console.log(`🔍 Checking printer for ${printerType}:`, printerName);
+  try {
+    const response = await axios.get(
+      `${API_URL}/server/printer/config`,
+      { headers: { 'server-token': localStorage.getItem('serverToken') } }
+    );
+    printerName = response.data.config[printerType];
+    console.log(`🔍 Fresh printer for ${printerType}:`, printerName);
+  } catch (error) {
+    console.error('Failed to get printer config:', error);
+    return;
+  }
   
   if (!printerName) {
     console.warn(`⚠️ No printer configured for ${printerType}`);
-    alert(`⚠️ No printer configured for ${printerType}!`);
     return;
   }
 
-  console.log(`🖨️ Printing to ${printerType.toUpperCase()} (${printerName})...`);
-
-  if (!window.qz) {
-    console.error('❌ QZ Tray not loaded');
-    alert('❌ QZ Tray library not loaded!');
-    return;
-  }
-
-  if (!window.qz.websocket.isActive()) {
+  if (!window.qz?.websocket?.isActive()) {
     console.error('❌ QZ Tray not connected');
-    alert('⚠️ QZ Tray not connected! Click "Reconnect QZ"');
     return;
   }
 
   try {
-    const availablePrinters = await window.qz.printers.find();
-    console.log('🖨️ Available printers:', availablePrinters);
-    console.log('🔍 Looking for:', printerName);
-    
-    if (!availablePrinters.includes(printerName)) {
-      console.warn(`⚠️ Printer "${printerName}" not found in available printers`);
-      alert(`Printer "${printerName}" not available for ${printerType}\n\nAvailable: ${availablePrinters.join(', ')}`);
-      return;
-    }
-
     const receiptText = generateReceipt(printerType, items, order);
-    console.log(`📄 Receipt text for ${printerType}:\n`, receiptText);
+    console.log(`📄 Receipt for ${printerType}:\n${receiptText}`);
     
     const config = window.qz.configs.create(printerName);
     const data = [{
@@ -304,7 +305,6 @@ const printToPhysicalPrinter = async (printerType, items, order) => {
       data: receiptText
     }];
 
-    console.log(`📤 Sending to printer: ${printerName}`);
     await window.qz.print(config, data);
     
     console.log(`✅ Printed to ${printerType.toUpperCase()}`);
@@ -312,36 +312,31 @@ const printToPhysicalPrinter = async (printerType, items, order) => {
 
   } catch (error) {
     console.error(`❌ Print failed for ${printerType}:`, error);
-    console.error('Error details:', error.message, error.stack);
-    alert(`Print failed for ${printerType}: ${error.message}`);
   }
 };
 
+  const generateReceipt = (printerType, items, order) => {
+    const time = new Date().toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false 
+    });
 
+    let receipt = '';
 
+    items.forEach(item => {
+      receipt += `${item.quantity}x ${item.name}\n`;
+      if (item.comment) {
+        receipt += `${item.comment}\n`;
+      }
+    });
+    
+    receipt += `${time}\n`;
+    receipt += `\n\n\n`;
 
-const generateReceipt = (printerType, items, order) => {
-  const time = new Date().toLocaleTimeString('en-US', { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false 
-  });
-
-  let receipt = '';
-
-  items.forEach(item => {
-    receipt += `${item.quantity}x ${item.name}\n`;
-    if (item.comment) {
-      receipt += `${item.comment}\n`;
-    }
-  });
-  
-  receipt += `${time}\n`;
-  receipt += `\n\n\n`; // Extra lines to cut paper
-
-  return receipt;
-};
+    return receipt;
+  };
 
   const showNotification = (message) => {
     const notification = document.createElement('div');
@@ -363,6 +358,7 @@ const generateReceipt = (printerType, items, order) => {
   };
 
   const testPrint = () => {
+    console.log('🧪 Test print with config:', printerConfig);
     const testOrder = {
       id: 'TEST-999',
       tableNumber: 5,
