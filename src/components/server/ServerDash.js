@@ -790,29 +790,7 @@ const handleRowClick = (order) => {
                   </Box>
                   
                   {/* Comment */}
-                  {item.comment && (
-                    <TextField
-                      value={item.comment}
-                      size="small"
-                      variant="outlined"
-                      disabled
-                      multiline
-                      maxRows={5}
-                      fullWidth
-                      InputProps={{
-                        readOnly: true,
-                        sx: { 
-                          backgroundColor: '#f8fafc',
-                          fontSize: { xs: '0.875rem', sm: '1rem' }
-                        }
-                      }}
-                      sx={{
-                        gridColumn: { xs: '1', sm: '2' },
-                        minWidth: { xs: '100%', sm: '200px' },
-                        maxWidth: { xs: '100%', sm: '300px' }
-                      }}
-                    />
-                  )}
+                  
                   
                   {/* Edit Button */}
                   <IconButton

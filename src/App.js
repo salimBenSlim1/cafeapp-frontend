@@ -17,7 +17,7 @@ import ManageWaiters from './components/admin/AdminMangeWaiter';
 import ServerLogin from './components/server/ServerLogin';
 import ServerDashboard from './components/server/ServerDash';
 import BarmanOrders from './components/server/Barman';
-
+import PrinterStation from './components/server/PrintingStation';
 // Create a custom theme
 const theme = createTheme({
   palette: {
@@ -69,6 +69,7 @@ function App() {
           <Route path="/server-login" element={<ServerLogin />} />
           <Route path="/server-dashboard" element={<ServerDashboard />} />
           <Route path="/barman" element={<BarmanOrders />} />
+          <Route path="/printing-station" element={<PrinterStation />} />
           
         </Routes>
       </Router>

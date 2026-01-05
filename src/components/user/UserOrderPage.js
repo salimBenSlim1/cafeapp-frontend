@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import ChatbotWaiter from '../ChatbotWaiter';
+
 const getUserLocation = () => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -30,6 +31,7 @@ const getUserLocation = () => {
     );
   });
 };
+
 function UserOrderPage() {
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -48,7 +50,6 @@ function UserOrderPage() {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
   const [addedToCart, setAddedToCart] = useState(null);
-  const [orderComment, setOrderComment] = useState('');
 
   const API_BASE = process.env.REACT_APP_API_URL;
   const location = useLocation();
@@ -75,93 +76,92 @@ function UserOrderPage() {
       localStorage.setItem('userOrders', JSON.stringify(orders));
     }
   }, [orders]);
-  const [cafeName,setCafeName]=useState(null)
- useEffect(() => {
-  const initializeSession = async () => {
-    try {
-      const existingToken = localStorage.getItem('userToken');
-      
-      if (existingToken && !qrKey) {
-        try {
-          const response = await axios.get(`${API_BASE}/getUserItems`, {
-            headers: { 'Authorization': `Bearer ${existingToken}` }
-          });
-          setCafeName(response?.data[0]?.Cafe?.name)
-          setProducts(response.data);
-          setFilteredProducts(response.data);
-          setSessionActive(true);
-          setLoading(false);
-          return;
-        } catch (err) {
-          console.log('Existing token invalid, clearing...');
-          localStorage.removeItem('userToken');
-        }
-      }
 
-      if (!qrKey) {
-        console.log("No QR key and no valid token");
-        setLoading(false);
-        setSessionActive(false);
-        return;
-      }
+  const [cafeName, setCafeName] = useState(null);
 
-      // Get user's location
-      let userLocation = null;
+  useEffect(() => {
+    const initializeSession = async () => {
       try {
-        userLocation = await getUserLocation();
-        console.log('User location:', userLocation);
-      } catch (locationError) {
-        console.error('Location error:', locationError);
-        alert('Location access is required to verify you are at the café. Please enable location services and try again.');
+        const existingToken = localStorage.getItem('userToken');
+        
+        if (existingToken && !qrKey) {
+          try {
+            const response = await axios.get(`${API_BASE}/getUserItems`, {
+              headers: { 'Authorization': `Bearer ${existingToken}` }
+            });
+            setCafeName(response?.data[0]?.Cafe?.name);
+            setProducts(response.data);
+            setFilteredProducts(response.data);
+            setSessionActive(true);
+            setLoading(false);
+            return;
+          } catch (err) {
+            console.log('Existing token invalid, clearing...');
+            localStorage.removeItem('userToken');
+          }
+        }
+
+        if (!qrKey) {
+          console.log("No QR key and no valid token");
+          setLoading(false);
+          setSessionActive(false);
+          return;
+        }
+
+        let userLocation = null;
+        try {
+          userLocation = await getUserLocation();
+          console.log('User location:', userLocation);
+        } catch (locationError) {
+          console.error('Location error:', locationError);
+          alert('Location access is required to verify you are at the café. Please enable location services and try again.');
+          setLoading(false);
+          setSessionActive(false);
+          return;
+        }
+
+        const response = await axios.get(`${API_BASE}/start-session`, {
+          params: { key: qrKey },
+          headers: {
+            'X-User-Latitude': userLocation.latitude,
+            'X-User-Longitude': userLocation.longitude,
+            'X-Location-Accuracy': userLocation.accuracy
+          }
+        });
+        
+        const { token, cafeId, tableId } = response.data;
+        if (cafeId) sessionStorage.setItem('c', cafeId);
+        localStorage.setItem('userToken', token);
+        if (tableId) {
+          sessionStorage.setItem('tai', tableId);
+        }
+
+        queryParams.delete("t");
+        const newSearch = queryParams.toString();
+        const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ""}`;
+        navigate(newUrl, { replace: true });
+
+        await loadProducts();
+
+      } catch (err) {
+        console.error('Session initialization failed:', err);
+        if (err.response?.status === 404) {
+          alert('Invalid QR code. Please scan a valid table QR code.');
+        } else if (err.response?.status === 403) {
+          const message = err.response?.data?.error || 'This table is currently inactive. Please contact staff.';
+          alert(message);
+        } else if (err.response?.status === 410) {
+          handleSessionExpired();
+        } else if (err.response?.status === 451) {
+          alert('You appear to be too far from the café. Please make sure you are at the location and try again.');
+        }
         setLoading(false);
         setSessionActive(false);
-        return;
       }
+    };
 
-      // Start session with location data
-      const response = await axios.get(`${API_BASE}/start-session`, {
-        params: { key: qrKey },
-        headers: {
-          'X-User-Latitude': userLocation.latitude,
-          'X-User-Longitude': userLocation.longitude,
-          'X-Location-Accuracy': userLocation.accuracy
-        }
-      });
-      
-      const { token, cafeId, tableId } = response.data;
-      if (cafeId) sessionStorage.setItem('c',cafeId)
-      localStorage.setItem('userToken', token);
-      if (tableId) {
-        sessionStorage.setItem('tai', tableId);
-      }
-
-      queryParams.delete("t");
-      const newSearch = queryParams.toString();
-      const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ""}`;
-      navigate(newUrl, { replace: true });
-
-      await loadProducts();
-
-    } catch (err) {
-      console.error('Session initialization failed:', err);
-      if (err.response?.status === 404) {
-        alert('Invalid QR code. Please scan a valid table QR code.');
-      } else if (err.response?.status === 403) {
-        const message = err.response?.data?.error || 'This table is currently inactive. Please contact staff.';
-        alert(message);
-      } else if (err.response?.status === 410) {
-        handleSessionExpired();
-      } else if (err.response?.status === 451) {
-        // Location too far from café
-        alert('You appear to be too far from the café. Please make sure you are at the location and try again.');
-      }
-      setLoading(false);
-      setSessionActive(false);
-    }
-  };
-
-  initializeSession();
-}, []);
+    initializeSession();
+  }, []);
 
   useEffect(() => {
     if (!sessionActive) return;
@@ -181,7 +181,7 @@ function UserOrderPage() {
 
     newSocket.on('connect', () => {
       console.log('Socket connected:', newSocket.id);
-      newSocket.emit('userJoin',{id:newSocket.id})
+      newSocket.emit('userJoin', { id: newSocket.id });
     });
 
     newSocket.on('orderStatusUpdate', (data) => {
@@ -196,7 +196,7 @@ function UserOrderPage() {
     });
 
     newSocket.on('statusUpdated', (data) => {
-      console.log(data)
+      console.log(data);
       console.log('Session status updated - expired');
       handleSessionExpired();
     });
@@ -224,7 +224,7 @@ function UserOrderPage() {
       const response = await axios.get(`${API_BASE}/getUserItems`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
       });
-      console.log('first',response.data)
+      console.log('first', response.data);
       setProducts(response.data);
       setFilteredProducts(response.data);
       setSessionActive(true);
@@ -265,7 +265,7 @@ function UserOrderPage() {
           : item
       ));
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      setCart([...cart, { ...product, quantity: 1, note: '' }]);
     }
 
     setAddedToCart(product.id);
@@ -278,6 +278,14 @@ function UserOrderPage() {
         ? { ...item, quantity: Math.max(0, Math.min(item.stock, item.quantity + delta)) }
         : item
     ).filter(item => item.quantity > 0));
+  };
+
+  const updateItemNote = (productId, note) => {
+    setCart(cart.map(item =>
+      item.id === productId
+        ? { ...item, note: note }
+        : item
+    ));
   };
 
   const removeFromCart = (productId) => {
@@ -293,17 +301,25 @@ function UserOrderPage() {
     setOrderLoading(true);
 
     const payload = {
-      items: cart.map(i => ({ itemId: i.id, quantity: i.quantity })),
-      comment: orderComment.trim() || null
+      items: cart.map(i => ({ 
+        itemId: i.id, 
+        quantity: i.quantity,
+        note: i.note || null 
+      }))
     };
 
     const newOrder = {
       id: Date.now(),
       date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      items: cart.map(i => ({ id: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+      items: cart.map(i => ({ 
+        id: i.id, 
+        name: i.name, 
+        quantity: i.quantity, 
+        price: i.price,
+        note: i.note || null 
+      })),
       total: getTotalPrice(),
-      status: 'pending',
-      comment: orderComment.trim() || null
+      status: 'pending'
     };
 
     setOrders(prevOrders => [...prevOrders, newOrder]);
@@ -312,7 +328,7 @@ function UserOrderPage() {
       const response = await axios.post(`${API_BASE}/addOrder`, payload, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
       });
-      socket.emit('userJoin',{id:response.data.orderId})
+      socket.emit('userJoin', { id: response.data.orderId });
       console.log('Order placed successfully:', response.data);
       
       setOrders(prevOrders => 
@@ -325,7 +341,6 @@ function UserOrderPage() {
 
       setRefresh(!refresh);
       setCart([]);
-      setOrderComment('');
       setOrderSuccess(true);
       
       setTimeout(() => {
@@ -578,7 +593,6 @@ function UserOrderPage() {
           </div>
         </button>
 
-        {/* Chatbot Waiter Component */}
         <ChatbotWaiter products={products} onAddToCart={addToCart} />
 
         {openCart && (
@@ -607,7 +621,7 @@ function UserOrderPage() {
                             {(item.price * item.quantity).toFixed(2)} TnD
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 mb-3">
                           <button
                             onClick={() => updateQuantity(item.id, -1)}
                             className="w-8 h-8 bg-slate-700 hover:bg-slate-600 active:scale-95 rounded-lg flex items-center justify-center transition-all text-white"
@@ -628,27 +642,26 @@ function UserOrderPage() {
                             <X size={20} />
                           </button>
                         </div>
+                        
+                        <div className="mt-3 pt-3 border-t border-slate-700">
+                          <label className="flex items-center gap-2 text-slate-300 text-xs sm:text-sm font-medium mb-2">
+                            <MessageSquare size={14} className="text-blue-400" />
+                            Add a note for this item (optional)
+                          </label>
+                          <textarea
+                            value={item.note || ''}
+                            onChange={(e) => updateItemNote(item.id, e.target.value)}
+                            placeholder="Special requests for this item..."
+                            maxLength={150}
+                            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 text-white placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none text-sm"
+                            rows={2}
+                          />
+                          <p className="text-xs text-slate-500 mt-1 text-right">
+                            {(item.note || '').length}/150
+                          </p>
+                        </div>
                       </div>
                     ))}
-                    
-                    {/* Comment Section */}
-                    <div className="mt-4 mb-4">
-                      <label className="flex items-center gap-2 text-slate-300 text-sm font-medium mb-2">
-                        <MessageSquare size={16} className="text-blue-400" />
-                        Add a note (optional)
-                      </label>
-                      <textarea
-                        value={orderComment}
-                        onChange={(e) => setOrderComment(e.target.value)}
-                        placeholder="Any special requests or preferences?"
-                        maxLength={200}
-                        className="w-full px-4 py-3 bg-slate-900/50 border border-slate-700 text-white placeholder-slate-500 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                        rows={3}
-                      />
-                      <p className="text-xs text-slate-500 mt-1 text-right">
-                        {orderComment.length}/200
-                      </p>
-                    </div>
                     
                     <div className="mt-6">
                       <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-4 sm:p-5 rounded-xl">
@@ -691,14 +704,24 @@ function UserOrderPage() {
                   Are you sure you want to place this order?
                 </p>
                 
-                <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 mb-4">
-                  <div className="space-y-2 mb-3">
+                <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 mb-4 max-h-[50vh] overflow-y-auto">
+                  <div className="space-y-3 mb-3">
                     {cart.map((item) => (
-                      <div key={item.id} className="flex justify-between text-sm">
-                        <span className="text-slate-300">{item.quantity}x {item.name}</span>
-                        <span className="text-emerald-400 font-semibold">
-                          {(item.price * item.quantity).toFixed(2)} TnD
-                        </span>
+                      <div key={item.id} className="pb-3 border-b border-slate-700 last:border-0">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-slate-300">{item.quantity}x {item.name}</span>
+                          <span className="text-emerald-400 font-semibold">
+                            {(item.price * item.quantity).toFixed(2)} TnD
+                          </span>
+                        </div>
+                        {item.note && (
+                          <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2 mt-2">
+                            <div className="flex items-start gap-2">
+                              <MessageSquare size={12} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                              <p className="text-xs text-slate-300 italic">"{item.note}"</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -711,19 +734,6 @@ function UserOrderPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Display comment if added */}
-                {orderComment.trim() && (
-                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-4">
-                    <div className="flex items-start gap-2">
-                      <MessageSquare size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs text-blue-300 font-medium mb-1">Your Note:</p>
-                        <p className="text-sm text-slate-200 italic">"{orderComment}"</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <div className="flex gap-3">
                   <button
@@ -795,26 +805,23 @@ function UserOrderPage() {
                           </span>
                         </div>
                         <p className="text-xs sm:text-sm text-slate-400 mb-3">{order.date}</p>
-                        <div className="space-y-1 mb-3">
+                        <div className="space-y-2 mb-3">
                           {order.items.map((item, idx) => (
-                            <p key={idx} className="text-xs sm:text-sm text-slate-300">
-                              {item.quantity}x {item.name} - {(item.price * item.quantity).toFixed(2)} TnD
-                            </p>
+                            <div key={idx}>
+                              <p className="text-xs sm:text-sm text-slate-300">
+                                {item.quantity}x {item.name} - {(item.price * item.quantity).toFixed(2)} TnD
+                              </p>
+                              {item.note && (
+                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 mt-1 ml-4">
+                                  <div className="flex items-start gap-2">
+                                    <MessageSquare size={12} className="text-blue-400 mt-0.5 flex-shrink-0" />
+                                    <p className="text-xs text-slate-300 italic">"{item.note}"</p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           ))}
                         </div>
-                        
-                        {/* Display comment in orders list */}
-                        {order.comment && (
-                          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 mb-3">
-                            <div className="flex items-start gap-2">
-                              <MessageSquare size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
-                              <div className="flex-1">
-                                <p className="text-[10px] sm:text-xs text-blue-300 font-medium mb-1">Note:</p>
-                                <p className="text-xs sm:text-sm text-slate-200 italic">"{order.comment}"</p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
                         
                         <div className="border-t border-slate-700 pt-3">
                           <p className="font-bold text-emerald-400 text-right text-sm sm:text-base">

@@ -38,24 +38,17 @@ export default function ChatbotWaiter({ products, onAddToCart }) {
     }
   }, []);
 
-const scrollToMessageTop = () => {
-  const chatContainer = document.querySelector('.chat-messages-container');
-  if (chatContainer) {
-    chatContainer.scrollTop = 0;
-  }
-};
+
 
 useEffect(() => {
-  // Whenever a new message is added
-  const lastMessage = messages[messages.length - 1];
   const chatContainer = document.querySelector('.chat-messages-container');
 
-  if (lastMessage?.sender === 'bot' && chatContainer) {
-    // Scroll to top smoothly when bot replies
-    chatContainer.scrollTo({ top: 0, behavior: 'smooth' });
-  } else if (chatContainer) {
-    // Otherwise keep normal bottom scroll
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+  if (chatContainer) {
+    // Smooth scroll to bottom
+    chatContainer.scrollTo({ 
+      top: chatContainer.scrollHeight, 
+      behavior: 'smooth' 
+    });
   }
 }, [messages]);
 
