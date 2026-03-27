@@ -1,870 +1,505 @@
-import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Bell, LogOut, Clock, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, AlertCircle, Package } from 'lucide-react';
 import { Add as AddIcon } from '@mui/icons-material';
-
-import {
-  Box,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  Chip,
-  IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  ToggleButtonGroup,
-  ToggleButton,
-  Badge,
-  Pagination,
-  CircularProgress,
-  Snackbar,
-  Alert,
-} from '@mui/material';
-import {
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-  CheckCircle as CheckCircleIcon,
-  Schedule as ScheduleIcon,
-  Notifications as NotificationsIcon,
-  Print as PrintIcon,
-} from '@mui/icons-material';
-import { io } from 'socket.io-client';
-import './ServerDash.css';
+import ServerAddItems from './ServerAddItems';
 import axios from 'axios';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import   SmartPrintDialog  from '../admin/MultiPrinterManager';
-import ServerAddItems from './ServerAddItems'; // Add at top
+import { io } from 'socket.io-client';
 
+const API = process.env.REACT_APP_API_URL;
+const WS  = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
+const hds = () => ({ 'server-token': localStorage.getItem('serverToken') });
 
-function ServerDash() {
-  const [orders, setOrders] = useState([]);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [editingItem, setEditingItem] = useState(null);
-  const [itemQuantity, setItemQuantity] = useState(0);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [itemToDelete, setItemToDelete] = useState(null);
-  const [refresh, setRefresh] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [viewMode, setViewMode] = useState('pending');
-  const [notificationCount, setNotificationCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [alerts, setAlerts] = useState([]);
-  const [printingOrder, setPrintingOrder] = useState(null);
-  const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
-const [selectedTable, setSelectedTable] = useState(null);
-  // NEW: Loading states for each order
-  const [loadingOrders, setLoadingOrders] = useState({});
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-  const [showPrintDialog, setShowPrintDialog] = useState(false);
-  const [orderToPrint, setOrderToPrint] = useState(null);
-  const ordersPerPage = 10;
-  const audioRef = useRef(null);
-  const printRef = useRef();
-useEffect(() => {
-  // Create and configure audio element
-  audioRef.current = new Audio();
-  
-  // Option 1: Use a notification sound URL (recommended)
-  // You can use any of these free notification sounds:
-  audioRef.current.src = 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3'; // Positive notification
-  // OR use: 'https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3' // Bell notification
-  // OR use: 'https://assets.mixkit.co/active_storage/sfx/2870/2870-preview.mp3' // Success notification
-  
-  audioRef.current.volume = 0.5; // Set volume (0.0 to 1.0)
-  
-  // Preload the audio
-  audioRef.current.load();
-  
-  return () => {
-    // Cleanup
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-  };
-}, []);
-const playNotificationSound = () => {
-  if (audioRef.current) {
-    // Reset audio to start
-    audioRef.current.currentTime = 0;
-    
-    // Play the sound
-    audioRef.current.play().catch(error => {
-      console.log('Audio play failed:', error);
-      // Browser might block autoplay, this is normal
-    });
-  }
+// ── FIX 1: Added 'canceled' to all status maps ───────────────────
+const STATUS_PILL  = {
+  pending:  'bg-amber-50 text-amber-700',
+  preparing:'bg-blue-50 text-blue-700',
+  served:   'bg-green-50 text-green-700',
+  canceled: 'bg-red-50 text-red-500',          // ← added
 };
-  // Socket.io setup
-useEffect(() => {
-  const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
-  const newSocket = io(SOCKET_URL, {
-    transports: ['websocket'],
-    reconnection: true,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    reconnectionAttempts: Infinity,
-    withCredentials: true,
-    upgrade: true,
-  });
+const STATUS_LABEL = {
+  pending:  '⏳ Pending',
+  preparing:'🔥 Preparing',
+  served:   '✅ Served',
+  canceled: '✕ Canceled',                       // ← added
+};
+const CHIP_CLS = {
+  pending:  'bg-amber-100 text-amber-800',
+  preparing:'bg-blue-100 text-blue-800',
+  served:   'bg-green-100 text-green-800',
+  canceled: 'bg-red-100 text-red-600',          // ← added
+};
+const DETAIL_BORDER = {
+  pending:  '#f59e0b',
+  preparing:'#3b82f6',
+  served:   '#22c55e',
+  canceled: '#ef4444',                          // ← added
+};
+const DETAIL_BG = {
+  pending:  'bg-amber-50/40',
+  preparing:'bg-blue-50/40',
+  served:   'bg-green-50/30',
+  canceled: 'bg-red-50/30',                     // ← added
+};
 
-  newSocket.on('connect', () => {
-    const cafeId = localStorage.getItem('cafeId');
-    if (cafeId) {
-      newSocket.emit('joinCafe', { cafeId });
-    }
-  });
+function timeAgo(iso) {
+  const d = Math.floor((Date.now() - new Date(iso)) / 1000);
+  if (d < 60)   return `${d}s ago`;
+  if (d < 3600) return `${Math.floor(d / 60)}m ago`;
+  return `${Math.floor(d / 3600)}h ago`;
+}
 
-  const handleNewOrder = (data) => {
-    setNotificationCount(prev => prev + 1);
-    setRefresh(prev => !prev);
-    
-    // Play notification sound
-    playNotificationSound();
-  };
+export default function ServerDash() {
+  const [page,       setPage]       = useState(1);
+  const [items,      setItems]      = useState([]);
+  const [tables,     setTables]     = useState([]);
+  const [orders,     setOrders]     = useState([]);
+  const [total,      setTotal]      = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [expanded,   setExpanded]   = useState(new Set());
+  const [showComp,   setShowComp]   = useState(false);
+  const [error,      setError]      = useState(null);
+  const [connected,  setConnected]  = useState(false);
+  const limit     = 10;
+  const navigate  = useNavigate();
+  const socketRef = useRef(null);
 
-  const handleNewAlert = (data) => {
-    setAlerts(prev => [...prev, data]);
-  };
-
-  const handleOrderStatusUpdated = (data) => {
-    setOrders(prevOrders =>
-      prevOrders.map(order => (order.id === data.id ? { ...order, ...data } : order))
-    );
-  };
-
-  newSocket.on('newOrder', handleNewOrder);
-  newSocket.on('newAlert', handleNewAlert);
-  newSocket.on('orderStatusUpdated', handleOrderStatusUpdated);
-
-  return () => {
-    newSocket.off('newOrder', handleNewOrder);
-    newSocket.off('newAlert', handleNewAlert);
-    newSocket.off('orderStatusUpdated', handleOrderStatusUpdated);
-    if (newSocket.connected || newSocket.connecting) {
-      newSocket.disconnect();
-    }
-  };
-}, []);
-
-
-  const navigate = useNavigate();
-  
+  /* ── fetch orders on page change ── */
   useEffect(() => {
-    axios.get(process.env.REACT_APP_API_URL+"/server/getOrders", {
-      headers: { 'server-token': localStorage.getItem('serverToken') }
-    })
-    .then((r) => {
-      const filteredData = r.data.filter((e) => {
-        const status = e.status;
-        const orderDate = new Date(e.createdAt);
-        const today = new Date();
-        const start = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate(),
-          6, 0, 0, 0
-        );
-        const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-
-        if (viewMode === "pending") {
-          return status === "pending";
-        } else if (status === "served" || status==='canceled') {
-          return orderDate >= start && orderDate <= end;
-        }
-
-        return false;
+    axios.get(`${API}/server/getOrders?page=${page}&limit=${limit}`, { headers: hds() })
+      .then(r => {
+        setOrders(r.data.orders ?? []);
+        setTotal(r.data.total ?? 0);
+        setTotalPages(r.data.totalPages ?? 1);
+      })
+      .catch(e => {
+        if (e?.response?.status === 403) navigate(e.response.data?.redirectTo);
+        if (e?.response?.status === 401) navigate(e.response.data?.redirectTo);
+        else setError('Failed to load orders.');
       });
-      setOrders(filteredData);
-      setCurrentPage(1);
-    })
-    .catch((err) => {
-      if (err.response?.data){
-        navigate('/login')
-      }
-    });
-  }, [refresh, viewMode]);
+  }, [page]);
 
- const handlePrintReceipt = (order) => {
-  console.log(order)
-  setOrderToPrint(order);
-  setShowPrintDialog(true);
-};
-const handleOpenAddItems = (tableNumber) => {
-  setSelectedTable(tableNumber);
-  setShowAddItemsDialog(true);
-};
-  const handleViewModeChange = (event, newMode) => {
-    if (newMode !== null) {
-      setViewMode(newMode);
+  /* ── fetch items + tables once ── */
+  useEffect(() => {
+    Promise.all([
+      axios.get(`${API}/server/getItems`,  { headers: hds() }),
+      axios.get(`${API}/server/getTables`, { headers: hds() }),
+    ])
+      .then(([ir, tr]) => { setItems(ir.data); setTables(tr.data); })
+      .catch(e => { if (e?.response?.status === 403) navigate(e.response.data?.redirectTo); });
+  }, []);
+
+  /* ── socket ── */
+  useEffect(() => {
+    const token = localStorage.getItem('serverToken');
+    const socket = io(WS, {
+      auth:                { token },
+      transports:          ['polling', 'websocket'],
+      upgrade:             true,
+      reconnection:        true,
+      reconnectionDelay:   1000,
+      reconnectionDelayMax:5000,
+      withCredentials:     true,
+    });
+
+    socketRef.current = socket;
+    let wasConnected  = false;
+
+    socket.on('connect', () => {
+      setConnected(true);
+      if (wasConnected) {
+        // reconnect — re-fetch page 1 to catch missed events
+        axios.get(`${API}/server/getOrders?page=1&limit=${limit}`, { headers: hds() })
+          .then(r => {
+            setOrders(r.data.orders ?? []);
+            setTotal(r.data.total ?? 0);
+            setTotalPages(r.data.totalPages ?? 1);
+          })
+          .catch(e => { 
+            if (e?.response?.status === 403) navigate(e.response?.data?.redirectTo); 
+            if (e?.response?.status === 401) navigate(e.response?.data?.redirectTo); 
+          });
+      }
+      wasConnected = true;
+    });
+
+    socket.on('disconnect',    () => setConnected(false));
+    socket.on('connect_error', err => console.warn('[socket] waiter:', err.message));
+
+    /* ── FIX 2: newOrder — normalize itemName field ─────────────── */
+    socket.on('newOrder', (payload) => {
+      if (payload._socketId && payload._socketId === socket.id) return;
+
+      // Normalize OrderItems so itemName is always present
+      const normalized = {
+        ...payload,
+        OrderItems: (payload.OrderItems ?? []).map(i => ({
+          ...i,
+          itemName: i.itemName ?? i.Item?.name ?? i.name ?? '?',
+        })),
+      };
+
+      setOrders(prev => {
+        const existingIndex = prev.findIndex(o => o.id === normalized.id);
+        if (existingIndex !== -1) {
+          const updated = [...prev];
+          updated[existingIndex] = {
+            ...updated[existingIndex],
+            totalPrice: Number(normalized.totalPrice),
+            OrderItems: [
+              ...(updated[existingIndex].OrderItems || []),
+              ...(normalized.OrderItems || []),
+            ],
+          };
+          return updated;
+        }
+        setTotal(t => {
+      const newTotal = t + 1;
+      setTotalPages(Math.ceil(newTotal / limit));
+      return newTotal;
+    });
+
+    const next = [normalized, ...prev];
+    if (next.length > limit) next.splice(limit, 1);
+    return next;
+
+      });
+    });
+
+    /* ── FIX 3: order:canceled — patch status + all items ────────── */
+    socket.on('order:canceled', ({ orderId, itemIds }) => {
+      setOrders(prev => prev.map(o => {
+        if (o.id !== orderId) return o;
+        return {
+          ...o,
+          status: 'canceled',
+          OrderItems: (o.OrderItems ?? []).map(i =>
+            itemIds.includes(i.id) ? { ...i, status: 'canceled' } : i
+          ),
+        };
+      }));
+    });
+
+    /* barman changed an item status */
+    socket.on('barman:itemStatusChanged', ({ orderId, orderItemId, status }) => {
+      setOrders(prev => prev.map(o => {
+        if (o.id !== orderId) return o;
+        return {
+          ...o,
+          OrderItems: (o.OrderItems ?? []).map(i =>
+            i.id === orderItemId ? { ...i, status } : i
+          ),
+        };
+      }));
+    });
+
+    /* whole order served */
+    socket.on('orderStatusUpdated', ({ id, status }) => {
+      setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('connect_error');
+      socket.off('newOrder');
+      socket.off('order:canceled');
+      socket.off('barman:itemStatusChanged');
+      socket.off('orderStatusUpdated');
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, []);
+
+  /* ── place order ── */
+  const onOrderPlaced = async (payload) => {
+    console.log(orders)
+    try {
+      await axios.post(
+        `${API}/server/addOrderForTable`,
+        payload,
+        { headers: { ...hds(), 'x-socket-id': socketRef.current?.id ?? '' } }
+      );
+      
+    } catch (e) {
+      setError(e?.response?.data?.error ?? 'Failed to place order.');
+      if (e?.response?.status === 403) navigate(e?.response?.data?.redirectTo);
     }
   };
 
-const handleRowClick = (order) => {
-  // Only allow opening dialog for pending orders
-  if (order.status === 'served' || order.status === 'canceled') {
-    setSnackbar({ 
-      open: true, 
-      message: 'Cannot edit completed orders', 
-      severity: 'warning' 
-    });
-    return;
-  }
-  
-  setSelectedOrder(order);
-  setOpenDialog(true);
-  if (notificationCount > 0) {
-    setNotificationCount(0);
-  }
-};
-
-  const handleCloseDialog = () => {
-    setSelectedOrder(null);
-    setEditingItem(null);
-    setOpenDialog(false);
-  };
-
-  const handleEditItem = (item) => {
-    setEditingItem(item);
-    setItemQuantity(item.quantity);
-  };
-
-  const handleUpdateQuantity = () => {
-    if (!selectedOrder || !editingItem) return;
-    axios.put(process.env.REACT_APP_API_URL+'/server/updateOrder/' + editingItem.id, {
-      quantity: parseInt(itemQuantity),
-    }, {
-      headers: { 'server-token': localStorage.getItem('serverToken') }
-    })
-    .then((r) => {
-      setOpenDialog(false);
-      setRefresh(!refresh);
-      setSnackbar({ open: true, message: 'Order updated successfully!', severity: 'success' });
-    })
-    .catch((err) => {
-      console.log(err);
-      setSnackbar({ open: true, message: 'Failed to update order', severity: 'error' });
-    });
-    setEditingItem(null);
-  };
-
-  const [showPopUp, setShowPopUp] = useState(null);
-  
-  // UPDATED: Modified updateOrderStatus with loading states
-  const updateOrderStatus = (id, upd, tableId) => {
-    // Set loading state for this specific order
-    setLoadingOrders(prev => ({ ...prev, [id]: upd }));
-    
-    axios.put(process.env.REACT_APP_API_URL+'/server/updateOrderStatus/' + id, {
-      status: upd,
-      tableId
-    }, {
-      headers: { 'server-token': localStorage.getItem('serverToken') }
-    })
-    .then((r) => {
-      // Remove loading state
-      setLoadingOrders(prev => {
-        const newState = { ...prev };
-        delete newState[id];
-        return newState;
-      });
-      
-      // Show success notification
-      const message = upd === 'served' ? 'Order marked as served!' : 'Order canceled successfully!';
-      setSnackbar({ open: true, message, severity: 'success' });
-      
-      setTimeout(() => {
-        setRefresh(!refresh);
-      }, 500);
-    })
-    .catch((err) => {
-      // Remove loading state
-      setLoadingOrders(prev => {
-        const newState = { ...prev };
-        delete newState[id];
-        return newState;
-      });
-      
-      // Show error
-      setShowPopUp(err.response?.data?.error || 'Failed to update order status');
-      setSnackbar({ open: true, message: 'Failed to update order', severity: 'error' });
+  const toggleExpand = (id) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
     });
   };
-
-  const getStatusChip = (status) => {
-    const statusColors = {
-      pending: '#FFA500',
-      prepared: '#87CEEB',
-      canceled: 'red',
-      served: '#10b981',
-    };
-
-    return (
-      <Chip
-        label={status.charAt(0).toUpperCase() + status.slice(1)}
-        sx={{
-          backgroundColor: statusColors[status],
-          color: '#FFFFFF',
-          fontWeight: 600,
-        }}
-      />
-    );
-  };
-
-  const handlePageChange = (event, value) => {
-    setCurrentPage(value);
-  };
-
-  const indexOfLastOrder = currentPage * ordersPerPage;
-  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
-  const totalPages = Math.ceil(orders.length / ordersPerPage);
 
   return (
-    <>
-      <Box className="orders-container" sx={{ display: printingOrder ? 'none' : 'block' }}>
-        <Paper 
-          className="header-paper" 
-          elevation={0} 
-          style={{
-            background: "linear-gradient(135deg, #1e293b 0%, #334155 100%)",
-            position: "relative",
-            paddingTop: "60px"
-          }}
-        >
-          <Button
-            onClick={() => window.history.back()}
-            startIcon={<ArrowLeft size={20} />}
-            sx={{
-              position: "absolute",
-              top: 16,
-              left: 16,
-              backdropFilter: "blur(10px)",
-              backgroundColor: "rgba(255, 255, 255, 0.1)",
-              color: "white",
-              borderRadius: "50px",
-              px: 2,
-              py: 1,
-              textTransform: "none",
-              transition: "transform 0.2s",
-              zIndex: 10,
-              "&:hover": {
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
-                transform: "scale(1.05)",
-              },
-              "& .MuiButton-startIcon": {
-                marginRight: { xs: 0, sm: 1 },
-              },
-            }}
-          >
-            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-              Back
-            </Box>
-          </Button>
-          
-          <Button
-            onClick={() => {
-              localStorage.clear()
-              window.history.back()
-            }}
-            startIcon={<ArrowLeft size={20} />}
-            sx={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              backdropFilter: "blur(10px)",
-              backgroundColor: "red",
-              color: "white",
-              borderRadius: "50px",
-              px: 2,
-              py: 1,
-              textTransform: "none",
-              transition: "transform 0.2s",
-              zIndex: 10,
-              "&:hover": {
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
-                transform: "scale(1.05)",
-              },
-              "& .MuiButton-startIcon": {
-                marginRight: { xs: 0, sm: 1 },
-              },
-            }}
-          >
-            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-              Disconnect
-            </Box>
-          </Button>
-          <Button
-            onClick={() => {
-              
-              navigate('/barman')
-            }}
-            className='float-right'
-            sx={{
-              // position: "absolute",
-              top: 16,
-              right: 16,
-              backdropFilter: "blur(10px)",
-              backgroundColor: "black",
-              color: "white",
-              borderRadius: "50px",
-              px: 2,
-              py: 1,
-              textTransform: "none",
-              transition: "transform 0.2s",
-              zIndex: 10,
-              "&:hover": {
-                backgroundColor: "rgba(255, 255, 255, 0.15)",
-                transform: "scale(1.05)",
-              },
-              "& .MuiButton-startIcon": {
-                marginRight: { xs: 0, sm: 1 },
-              },
-            }}
-          >
-            <Box component="span" sx={{ display: { xs: "none", sm: "inline" } }}>
-              Barman
-            </Box>
-          </Button>
+    <div className="min-h-screen bg-slate-50 flex flex-col" style={{ fontFamily:"'Plus Jakarta Sans',sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        @keyframes detail-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+        .detail-animate{animation:detail-in .18s ease}
+        @media(max-width:639px){.orders-table{display:none}.orders-cards{display:flex}.pagination-wrap{border-radius:0 0 1rem 1rem}}
+        @media(min-width:640px){.orders-table{display:table}.orders-cards{display:none}}
+        @media(max-width:767px){.col-total{display:none}.col-time{display:none}}
+        @media(max-width:900px){.chip-area{max-width:200px}}
+      `}</style>
 
-          <Box className="header-content">
-            <Box>
-              <Typography variant="h4" className="header-title">
-                Orders Management
-              </Typography>
-              <Typography variant="subtitle1" className="header-subtitle">
-                Manage your café orders efficiently
-              </Typography>
-            </Box>
-            <Badge 
-              badgeContent={notificationCount} 
-              color="error"
-              className="notification-badge"
-              max={99}
-            >
-              <IconButton className="notification-icon">
-                <NotificationsIcon sx={{ fontSize: 32, color: '#f1f5f9' }} />
-              </IconButton>
-            </Badge>
-          </Box>
-        {/* Add Items Floating Button */}
-<Button
-  variant="contained"
-  startIcon={<AddIcon />}
-  onClick={() => {
-    // Get tables assigned to this server
-      handleOpenAddItems(); // Or show table selector
-   
-  }}
-  sx={{
-    position: 'fixed',
-    bottom: 32,
-    right: 32,
-    zIndex: 1000,
-    bgcolor: '#10b981',
-    color: 'white',
-    borderRadius: '50px',
-    px: 3,
-    py: 1.5,
-    boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
-    '&:hover': {
-      bgcolor: '#059669',
-      transform: 'scale(1.05)',
-    },
-  }}
->
-  Add Items
-</Button>
-
-        </Paper>
-
-        {alerts.length !== 0 && alerts.map((e, i) => (
-          <div 
-            key={i}
-            className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-3 rounded-r-lg shadow-sm"
-          >
-            <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-amber-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3 flex-1">
-                <p className="text-sm text-amber-800">
-                  Item <span className="font-semibold">{e.name}</span> will end - You only have {e.stock} left in stock.{' '}
-                  <a 
-                    
-                    className=" font-medium hover:text-amber-900 transition-colors"
-                  >
-                    Update it now
-                  </a>
-                </p>
+      {/* HEADER */}
+      <header className="bg-white border-b border-slate-100 sticky top-0 z-50" style={{boxShadow:'0 1px 12px rgba(30,80,200,0.06)'}}>
+        <div className="max-w-5xl mx-auto px-4 sm:px-5 h-14 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <button onClick={() => window.history.back()} className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-slate-100 text-slate-500 text-xs font-semibold hover:bg-slate-200 transition-colors shrink-0">
+              <ArrowLeft size={13}/><span className="hidden sm:inline">Back</span>
+            </button>
+            <div className="flex items-center gap-2 min-w-0">
+              <img src="/images/coffai1.png" alt="" className="w-7 h-7 object-contain shrink-0"/>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-slate-900 tracking-tight leading-none truncate">Orders</div>
+                <div className="text-[10px] text-slate-400 mt-0.5 hidden sm:block">Server Dashboard</div>
               </div>
             </div>
           </div>
-        ))}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <span title={connected?'Live':'Reconnecting…'} className={`w-2 h-2 rounded-full shrink-0 transition-colors ${connected?'bg-green-400':'bg-red-400 animate-pulse'}`}/>
+            <h1 className='text-sm'>{localStorage.getItem('name')}</h1>
+            <button className="relative w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200 transition-colors">
+              <Bell size={16} className="text-slate-500"/>
+            </button>
+            <button onClick={()=>{localStorage.clear();window.history.back();}} className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors">
+              <LogOut size={13}/><span className="hidden sm:inline">Disconnect</span>
+            </button>
+          </div>
+        </div>
+      </header>
 
-        {showPopUp && (
-          <div className="absolute inset-0 flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 w-[90%] max-w-md text-center">
-              <h2 className="text-xl font-semibold mb-3">Notification</h2>
-              <p className="text-gray-600 mb-6">
-                {showPopUp}
-              </p>
-              <button
-                onClick={() => setShowPopUp(null)}
-                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"
-              >
-                Close
-              </button>
-            </div>
+      {/* MAIN */}
+      <main className="flex-1 max-w-5xl mx-auto w-full px-3 sm:px-5 py-4 sm:py-6 pb-28 flex flex-col gap-4 sm:gap-5">
+        {error && (
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 px-4 py-2.5 rounded-xl text-sm font-medium">
+            <AlertCircle size={14} className="shrink-0"/>
+            <span className="flex-1">{error}</span>
+            <button onClick={()=>setError(null)} className="text-red-400 hover:text-red-600 leading-none text-base shrink-0">✕</button>
           </div>
         )}
 
-        <Box className="toggle-container">
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={handleViewModeChange}
-            className="toggle-group"
-          >
-            <ToggleButton value="pending" className="toggle-button">
-              <ScheduleIcon sx={{ mr: 1 }} />
-              Pending Orders
-            </ToggleButton>
-            <ToggleButton value="served" className="toggle-button">
-              <CheckCircleIcon sx={{ mr: 1 }} />
-              Served Today
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
-
-        <Paper className="table-paper" elevation={0}>
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell className="header-cell">Table</TableCell>
-                  <TableCell className="header-cell">Items</TableCell>
-                  <TableCell className="header-cell">Total</TableCell>
-                  <TableCell className="header-cell">Status</TableCell>
-                  <TableCell className="header-cell">Time</TableCell>
-                  <TableCell className="header-cell">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {currentOrders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="empty-state">
-                      <Typography>
-                        {viewMode === 'pending'
-                          ? 'No pending orders'
-                          : 'No orders served today'}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  currentOrders.map((order) => (
-                    <TableRow key={order.id} className="table-row">
-                      <TableCell className="table-cell table-number">
-                        {order.Table.number}
-                      </TableCell>
-                    <TableCell
-  className="table-cell items-cell"
-  onClick={() => handleRowClick(order)} // Changed from order.OrderItems
->
-  {order.OrderItems.map((item, index) => (
-    <div key={index} className="item-line">
-      <span className="item-quantity">{item.quantity}x</span>{' '}
-      {item.Item.name}
-    </div>
-  ))}
-</TableCell>
-
-                     
-                      <TableCell className="table-cell price-cell">
-                        {order.totalPrice.toFixed(2)} TnD
-                      </TableCell>
-                      <TableCell className="table-cell status-cell">
-                        {viewMode === 'pending' ? (
-                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                updateOrderStatus(order.id, 'served', order.Table.number);
-                              }}
-                              disabled={!!loadingOrders[order.id]}
-                              className={`${
-                                loadingOrders[order.id] === 'served'
-                                  ? 'bg-gray-400 cursor-not-allowed'
-                                  : 'bg-green-600 hover:bg-green-700'
-                              } rounded-2xl text-white font-semibold py-2 px-3 transition flex items-center gap-2`}
-                            >
-                              {loadingOrders[order.id] === 'served' && (
-                                <CircularProgress size={16} sx={{ color: 'white' }} />
-                              )}
-                              Served
-                            </button>
-                           
-                          </Box>
-                        ) : (
-                          getStatusChip(order.status)
-                        )}
-                      </TableCell>
-                      <TableCell className="table-cell time-cell">
-                        {new Date(order.createdAt).toLocaleString().split(' ')[1]}
-                      </TableCell>
-                      <TableCell className="table-cell">
-                        <IconButton
-                          onClick={() => handlePrintReceipt(order)}
-                          sx={{ color: '#1976d2' }}
+        <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+          {orders.length === 0 ? (
+            <div className="text-center py-16 text-slate-400">
+              <div className="text-4xl mb-3">☕</div>
+              <div className="text-base font-semibold text-blue-400">No orders yet</div>
+              <div className="text-sm mt-1">Tap "Add Order" to get started</div>
+            </div>
+          ) : (
+            <>
+              {/* TABLE VIEW ≥640px */}
+              <table className="orders-table w-full border-collapse">
+                <thead>
+                  <tr className="bg-blue-50/50 border-b border-slate-100">
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Table</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Items</th>
+                    <th className="col-total px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Total</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Status</th>
+                    <th className="col-time px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wide">Time</th>
+                    <th className="w-8 px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(order => {
+                    const orderItems = order.OrderItems ?? [];
+                    const preview    = orderItems.slice(0, 2);
+                    const isOpen     = expanded.has(order.id);
+                    return (
+                      <>
+                        <tr key={`row-${order.id}`} onClick={() => toggleExpand(order.id)}
+                          className={['border-b border-slate-50 cursor-pointer transition-all duration-150 select-none',
+                            isOpen ? 'bg-blue-50/30 border-b-0' : 'hover:bg-slate-50/80'].join(' ')}
                         >
-                          <PrintIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                          <td className="px-4 py-3.5">
+                            <span className="text-sm font-bold text-slate-800 bg-indigo-50 px-2.5 py-1 rounded-lg">#{order.tableNumber}</span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <div className="chip-area flex flex-wrap gap-1">
+                              {preview.map((item, i) => (
+                                <span key={i} className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full whitespace-nowrap ${CHIP_CLS[item.status] ?? CHIP_CLS.pending}`}>
+                                  {item.itemName}<span className="font-bold ml-0.5">×{item.quantity}</span>
+                                </span>
+                              ))}
+                              {orderItems.length > 2 && <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-400">+{orderItems.length-2}</span>}
+                            </div>
+                          </td>
+                          <td className="col-total px-4 py-3.5">
+                            <span className="text-sm font-bold text-blue-700">{Number(order.totalPrice).toFixed(2)} TND</span>
+                          </td>
+                          <td className="px-4 py-3.5">
+                            <span className={`inline-flex items-center text-[11px] font-semibold px-2.5 py-1 rounded-full ${STATUS_PILL[order.status] ?? STATUS_PILL.pending}`}>
+                              {STATUS_LABEL[order.status] ?? STATUS_LABEL.pending}
+                            </span>
+                          </td>
+                          <td className="col-time px-4 py-3.5">
+                            <div className="flex items-center gap-1 text-[11px] text-slate-400"><Clock size={10}/> {timeAgo(order.updatedAt||order.createdAt)}</div>
+                          </td>
+                          <td className="px-4 py-3.5 w-8 text-center">
+                            <div className={`flex justify-center ${isOpen?'text-blue-500':'text-slate-400'}`}>
+                              {isOpen?<ChevronUp size={14}/>:<ChevronDown size={14}/>}
+                            </div>
+                          </td>
+                        </tr>
 
-          {orders.length > ordersPerPage && (
-            <Box className="pagination-container">
-              <Pagination
-                count={totalPages}
-                page={currentPage}
-                onChange={handlePageChange}
-                color="primary"
-                size="large"
-                showFirstButton
-                showLastButton
-                className="pagination"
-              />
-            </Box>
-          )}
-        </Paper>
+                        {isOpen && (
+                          <tr key={`detail-${order.id}`}>
+                            <td colSpan={6} className="p-0">
+                              <div className="detail-animate border-b border-slate-100" style={{background:'linear-gradient(to bottom,#f0f6ff,#f8faff)'}}>
+                                <div className="flex items-center gap-2 px-5 pt-3 pb-2 border-b border-blue-100/60">
+                                  <Package size={12} className="text-blue-400"/>
+                                  <span className="text-[11px] font-bold text-blue-400 uppercase tracking-widest">
+                                    Order #{order.id} · {orderItems.length} item{orderItems.length!==1?'s':''}
+                                  </span>
+                                  <span className="ml-auto text-[11px] text-slate-400">{timeAgo(order.createdAt)}</span>
+                                </div>
+                                <div className="px-4 py-3 flex flex-col gap-2">
+                                  {orderItems.map((item, idx) => {
+                                    const st = item.status ?? 'pending';
+                                    return (
+                                      <div key={item.id??idx} className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm border-l-[3px] shadow-sm ${DETAIL_BG[st] ?? DETAIL_BG.pending}`} style={{borderLeftColor: DETAIL_BORDER[st] ?? DETAIL_BORDER.pending}}>
+                                        <span className="font-semibold text-slate-800 flex-1 truncate">{item.itemName}</span>
+                                        {item.comment && item.comment.trim()!=='' && (
+                                          <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-100 shrink-0 hidden sm:inline-flex items-center gap-1">
+                                            💬 {item.comment}
+                                          </span>
+                                        )}
+                                        <span className="text-slate-400 font-bold text-xs shrink-0 tabular-nums">×{item.quantity}</span>
+                                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full shrink-0 ${STATUS_PILL[st] ?? STATUS_PILL.pending}`}>{STATUS_LABEL[st] ?? STATUS_LABEL.pending}</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <div className="flex items-center justify-between px-5 py-2.5 border-t border-blue-100/60">
+                                  <span className="text-[11px] text-slate-400 font-medium uppercase tracking-wide">Total</span>
+                                  <span className="text-sm font-bold text-blue-700">{Number(order.totalPrice).toFixed(2)} TND</span>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </>
+                    );
+                  })}
+                </tbody>
+              </table>
 
-        {/* Snackbar for notifications */}
-        <Snackbar
-          open={snackbar.open}
-          autoHideDuration={3000}
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-        >
-          <Alert
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-            severity={snackbar.severity}
-            sx={{ width: '100%' }}
-          >
-            {snackbar.message}
-          </Alert>
-        </Snackbar>
+              {/* CARD VIEW <640px */}
+              <div className="orders-cards flex-col divide-y divide-slate-50">
+                {orders.map(order => {
+                  const orderItems = order.OrderItems ?? [];
+                  const isOpen     = expanded.has(order.id);
+                  const st         = order.status ?? 'pending';
+                  return (
+                    <div key={`card-${order.id}`}>
+                      <div onClick={() => toggleExpand(order.id)}
+                        className={['flex items-center gap-3 px-4 py-3.5 cursor-pointer transition-colors select-none',
+                          isOpen?'bg-blue-50/40':'hover:bg-slate-50'].join(' ')}
+                      >
+                        <div className="flex flex-col items-center justify-center bg-indigo-50 rounded-xl w-12 h-12 shrink-0">
+                          <span className="text-[9px] font-semibold text-indigo-400 uppercase tracking-wide leading-none">TBL</span>
+                          <span className="text-lg font-bold text-indigo-700 leading-none mt-0.5">{order.tableNumber}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${STATUS_PILL[st] ?? STATUS_PILL.pending}`}>{STATUS_LABEL[st] ?? STATUS_LABEL.pending}</span>
+                            <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><Clock size={9}/> {timeAgo(order.createdAt)}</span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {orderItems.slice(0,2).map((item,i)=>(
+                              <span key={i} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${CHIP_CLS[item.status] ?? CHIP_CLS.pending}`}>
+                                {item.itemName} ×{item.quantity}
+                              </span>
+                            ))}
+                            {orderItems.length > 2 && <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-400">+{orderItems.length-2}</span>}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <span className="text-sm font-bold text-blue-700">{Number(order.totalPrice).toFixed(2)} TND</span>
+                          <div className={isOpen?'text-blue-400':'text-slate-300'}>{isOpen?<ChevronUp size={14}/>:<ChevronDown size={14}/>}</div>
+                        </div>
+                      </div>
+                      {isOpen && (
+                        <div className="detail-animate border-t border-blue-100/60" style={{background:'linear-gradient(to bottom,#f0f6ff,#f8faff)'}}>
+                          <div className="px-4 py-3 flex flex-col gap-2">
+                            {orderItems.map((item,idx)=>{
+                              const ist = item.status ?? 'pending';
+                              return (
+                                <div key={item.id??idx} className={`flex items-start gap-2.5 px-3 py-2.5 rounded-xl border-l-[3px] shadow-sm ${DETAIL_BG[ist] ?? DETAIL_BG.pending}`} style={{borderLeftColor: DETAIL_BORDER[ist] ?? DETAIL_BORDER.pending}}>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-slate-800 text-sm truncate">{item.itemName}</div>
+                                    {item.comment && item.comment.trim()!=='' && <div className="text-[11px] text-amber-700 mt-0.5">💬 {item.comment}</div>}
+                                  </div>
+                                  <span className="text-slate-400 font-bold text-xs shrink-0 mt-0.5">×{item.quantity}</span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${STATUS_PILL[ist] ?? STATUS_PILL.pending}`}>{STATUS_LABEL[ist] ?? STATUS_LABEL.pending}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <div className="flex justify-between items-center px-4 pb-3 pt-1">
+                            <span className="text-[11px] text-slate-400 uppercase tracking-wide font-medium">Total</span>
+                            <span className="text-sm font-bold text-blue-700">{Number(order.totalPrice).toFixed(2)} TND</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
-        {/* Dialog remains the same */}
-
-<Dialog 
-  open={openDialog} 
-  onClose={handleCloseDialog} 
-  maxWidth="md" 
-  fullWidth
-  PaperProps={{
-    sx: {
-      borderRadius: 2,
-      maxHeight: '90vh'
-    }
-  }}
->
-  {selectedOrder && (
-    <>
-      <DialogTitle 
-        sx={{ 
-          background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-          color: 'white',
-          fontWeight: 'bold',
-          fontSize: { xs: '1.25rem', sm: '1.5rem' }
-        }}
-      >
-        Order Details - Table {selectedOrder.Table.number}
-      </DialogTitle>
-      
-      <DialogContent 
-        sx={{ 
-          p: { xs: 1, sm: 2 },
-          mt: 2 
-        }}
-      >
-        <Box sx={{ width: '100%' }}>
-          {selectedOrder.OrderItems.map((item, index) => (
-            <Box
-              key={item.id}
-              sx={{
-                py: 2,
-                px: { xs: 1, sm: 2 },
-                borderBottom: index < selectedOrder.OrderItems.length - 1 ? '1px solid rgba(0,0,0,0.1)' : 'none',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2
-              }}
-            >
-              {editingItem?.id === item.id ? (
-                // EDITING MODE
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {item.Item.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {item.price.toFixed(2)} TnD each
-                    </Typography>
-                  </Box>
-                  
-                  <Box sx={{ 
-                    display: 'flex', 
-                    gap: 1, 
-                    flexWrap: 'wrap',
-                    alignItems: 'center' 
-                  }}>
-                    <TextField
-                      type="number"
-                      value={itemQuantity}
-                      onChange={(e) => setItemQuantity(e.target.value)}
-                      size="small"
-                      inputProps={{ min: 1 }}
-                      sx={{ width: { xs: '100%', sm: '120px' } }}
-                    />
-                    <Button
-                      variant="contained"
-                      onClick={handleUpdateQuantity}
-                      sx={{ 
-                        bgcolor: '#10b981',
-                        '&:hover': { bgcolor: '#059669' },
-                        flex: { xs: 1, sm: 'initial' }
-                      }}
-                    >
-                      Update
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={() => setEditingItem(null)}
-                      sx={{ 
-                        flex: { xs: 1, sm: 'initial' }
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                  </Box>
-                </Box>
-              ) : (
-                // VIEW MODE - Fixed nested ListItem issue
-                <Box sx={{ 
-                  display: 'grid',
-                  gridTemplateColumns: { 
-                    xs: '1fr',
-                    sm: '1fr auto 60px'
-                  },
-                  gap: 2,
-                  alignItems: 'start'
-                }}>
-                  {/* Item Info */}
-                  <Box>
-                    <Typography variant="subtitle1" fontWeight="bold">
-                      {item.quantity}x {item.Item.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {(item.quantity * item.price).toFixed(2)} TnD
-                    </Typography>
-                  </Box>
-                  
-                  {/* Comment */}
-                  
-                  
-                  {/* Edit Button */}
-                  <IconButton
-                    onClick={() => handleEditItem(item)}
-                    sx={{ 
-                      color: '#1976d2',
-                      gridColumn: { xs: '1', sm: '3' },
-                      justifySelf: { xs: 'start', sm: 'center' }
-                    }}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                </Box>
+              {/* PAGINATION */}
+              {totalPages > 1 && (
+                <div className="pagination-wrap flex items-center justify-between px-4 py-3 border-t border-slate-100 flex-wrap gap-2.5">
+                  <span className="text-xs text-slate-500">{total} order{total!==1?'s':''} · page {page} of {totalPages}</span>
+                  <div className="flex items-center gap-1">
+                    <PgBtn disabled={page===1} onClick={()=>setPage(1)}>«</PgBtn>
+                    <PgBtn disabled={page===1} onClick={()=>setPage(p=>p-1)}><ChevronLeft size={13}/></PgBtn>
+                    {Array.from({length:totalPages},(_,i)=>i+1).filter(p=>Math.abs(p-page)<=2).map(p=>(
+                      <PgBtn key={p} active={p===page} onClick={()=>setPage(p)}>{p}</PgBtn>
+                    ))}
+                    <PgBtn disabled={page===totalPages} onClick={()=>setPage(p=>p+1)}><ChevronRight size={13}/></PgBtn>
+                    <PgBtn disabled={page===totalPages} onClick={()=>setPage(totalPages)}>»</PgBtn>
+                  </div>
+                </div>
               )}
-            </Box>
-          ))}
-        </Box>
-        
-        {/* Total */}
-        <Box sx={{ 
-          mt: 3, 
-          pt: 2, 
-          borderTop: '2px solid #e2e8f0',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          px: { xs: 1, sm: 2 }
-        }}>
-          <Typography variant="h6" fontWeight="bold">
-            Total
-          </Typography>
-          <Typography variant="h6" fontWeight="bold" color="primary">
-            {selectedOrder.totalPrice.toFixed(2)} TnD
-          </Typography>
-        </Box>
-      </DialogContent>
-      
-      <DialogActions sx={{ p: { xs: 2, sm: 3 } }}>
-        <Button 
-          onClick={handleCloseDialog}
-          variant="contained"
-          fullWidth
-          sx={{
-            bgcolor: '#1e293b',
-            '&:hover': { bgcolor: '#334155' },
-            py: 1.5
-          }}
-        >
-          Close
-        </Button>
-      </DialogActions>
-    </>
-  )}
-</Dialog>
- {showPrintDialog && orderToPrint && (
-        <SmartPrintDialog
-          order={orderToPrint}
-          onClose={() => {
-            setShowPrintDialog(false);
-            setOrderToPrint(null);
-          }}
-        />
-      )}
-      </Box>
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* FAB */}
+      <button onClick={()=>setShowComp(true)}
+        className="fixed bottom-6 right-4 sm:right-6 z-50 flex items-center gap-2 px-4 sm:px-5 py-3 sm:py-3.5 rounded-full bg-blue-700 text-white text-sm font-bold transition-all hover:-translate-y-0.5 hover:bg-blue-800 active:translate-y-0"
+        style={{boxShadow:'0 6px 24px rgba(29,78,216,0.38)'}}>
+        <AddIcon style={{fontSize:17}}/>
+        <span className="hidden sm:inline">Add Order</span>
+        <span className="sm:hidden">Add</span>
+      </button>
+
       <ServerAddItems
-  open={showAddItemsDialog}
-  onClose={() => setShowAddItemsDialog(false)}
-  tableNumber={selectedTable}
-  onOrderAdded={() => {
-    setRefresh(!refresh);
-  }}
-/>
-    </>
+        items={items} tables={tables}
+        showComp={showComp} setShowComp={setShowComp}
+        onOrderPlaced={onOrderPlaced}
+      />
+    </div>
   );
 }
 
-export default ServerDash;
+function PgBtn({ children, disabled=false, active=false, onClick }) {
+  return (
+    <button disabled={disabled} onClick={onClick}
+      className={['min-w-[32px] h-8 px-2 rounded-lg border text-[13px] font-medium flex items-center justify-center transition-all',
+        active    ? 'bg-blue-700 border-blue-700 text-white cursor-default'
+        : disabled ? 'border-slate-200 text-slate-300 cursor-not-allowed'
+        :            'border-slate-200 text-slate-500 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50'
+      ].join(' ')}>
+      {children}
+    </button>
+  );
+}

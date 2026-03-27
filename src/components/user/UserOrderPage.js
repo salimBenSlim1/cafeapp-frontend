@@ -1,878 +1,569 @@
-import { useState, useEffect } from 'react';
-import { ShoppingCart, Search, Plus, Minus, X, Receipt, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, X, ChevronDown, WifiOff } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 import ChatbotWaiter from '../ChatbotWaiter';
 
-const getUserLocation = () => {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) {
-      reject(new Error('Geolocation is not supported by your browser'));
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        resolve({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy
-        });
-      },
-      (error) => {
-        reject(error);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    );
-  });
+/* ─── category meta ───────────────────────────────────────────────── */
+const CAT_META = {
+  all:     { emoji: '✦',  label: 'All',      gradient: 'linear-gradient(135deg,#1bcbe0,#1a6dd4)' },
+  coffee:  { emoji: '☕', label: 'Coffee',   gradient: 'linear-gradient(135deg,#c9933a,#7c4a1e)' },
+  food:    { emoji: '🍽', label: 'Food',     gradient: 'linear-gradient(135deg,#34d399,#059669)' },
+  drink:   { emoji: '🥤', label: 'Drinks',   gradient: 'linear-gradient(135deg,#818cf8,#4f46e5)' },
+  dessert: { emoji: '🍰', label: 'Desserts', gradient: 'linear-gradient(135deg,#f472b6,#db2777)' },
+  games:   { emoji: '🎲', label: 'Games',    gradient: 'linear-gradient(135deg,#fb923c,#ea580c)' },
+  smoking: { emoji: '🚬', label: 'Smoking',  gradient: 'linear-gradient(135deg,#94a3b8,#475569)' },
 };
-
-function UserOrderPage() {
-  const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [cart, setCart] = useState([]);
-  const [orders, setOrders] = useState([]);
-  const [openCart, setOpenCart] = useState(false);
-  const [openOrders, setOpenOrders] = useState(false);
-  const [refresh, setRefresh] = useState(false);
-  const [sessionActive, setSessionActive] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [orderLoading, setOrderLoading] = useState(false);
+export default function UserOrderPage() {
+  const [products, setProducts]             = useState([]);
+  const [filtered, setFiltered]             = useState([]);
+  const [search, setSearch]                 = useState('');
+  const [cat, setCat]                       = useState('all');
+  const [sessionActive, setSessionActive]   = useState(false);
+  const [loading, setLoading]               = useState(true);
   const [sessionExpired, setSessionExpired] = useState(false);
-  const [sessionData, setSessionData] = useState(null);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState(false);
-  const [addedToCart, setAddedToCart] = useState(null);
+  const [cafeName, setCafeName]             = useState('');
+  const [tableId, setTableId]               = useState('');
+  const [heroVisible, setHeroVisible]       = useState(false);
+  const [online, setOnline]                 = useState(navigator.onLine);
+  const [expandedCard, setExpandedCard]     = useState(null);
+  const searchRef                           = useRef(null);
 
-  const API_BASE = process.env.REACT_APP_API_URL;
+  const API      = process.env.REACT_APP_API_URL;
   const location = useLocation();
   const navigate = useNavigate();
-  const queryParams = new URLSearchParams(location.search);
-  const qrKey = queryParams.get("t");
+  const qp       = new URLSearchParams(location.search);
+  const qrKey    = qp.get('t');
 
-  const [socket, setSocket] = useState(null);
-
+  /* ── connectivity banner ───────────────────────────────────────── */
   useEffect(() => {
-    const storedOrders = localStorage.getItem('userOrders');
-    if (storedOrders) {
-      try {
-        setOrders(JSON.parse(storedOrders));
-      } catch (err) {
-        console.error('Failed to parse stored orders:', err);
-        localStorage.removeItem('userOrders');
-      }
-    }
+    const on  = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
+  /* ── session bootstrap ─────────────────────────────────────────── */
   useEffect(() => {
-    if (orders.length > 0) {
-      localStorage.setItem('userOrders', JSON.stringify(orders));
-    }
-  }, [orders]);
-
-  const [cafeName, setCafeName] = useState(null);
-
-  useEffect(() => {
-    const initializeSession = async () => {
+    (async () => {
       try {
-        const existingToken = localStorage.getItem('userToken');
-        
-        if (existingToken && !qrKey) {
+        const tok = localStorage.getItem('userToken');
+        if (tok) {
           try {
-            const response = await axios.get(`${API_BASE}/getUserItems`, {
-              headers: { 'Authorization': `Bearer ${existingToken}` }
-            });
-            setCafeName(response?.data[0]?.Cafe?.name);
-            setProducts(response.data);
-            setFilteredProducts(response.data);
+            const r = await axios.get(`${API}/getUserItems`, { headers: { Authorization: `Bearer ${tok}` } });
+            setProducts(r.data.data);
+            setFiltered(r.data.data);
+            setTableId(sessionStorage.getItem('tai') || '');
             setSessionActive(true);
             setLoading(false);
+            setTimeout(() => setHeroVisible(true), 80);
             return;
-          } catch (err) {
-            console.log('Existing token invalid, clearing...');
-            localStorage.removeItem('userToken');
-          }
+          } catch { localStorage.removeItem('userToken'); }
         }
-
-        if (!qrKey) {
-          console.log("No QR key and no valid token");
-          setLoading(false);
-          setSessionActive(false);
-          return;
-        }
-
-        let userLocation = null;
-        try {
-          userLocation = await getUserLocation();
-          console.log('User location:', userLocation);
-        } catch (locationError) {
-          console.error('Location error:', locationError);
-          alert('Location access is required to verify you are at the café. Please enable location services and try again.');
-          setLoading(false);
-          setSessionActive(false);
-          return;
-        }
-
-        const response = await axios.get(`${API_BASE}/start-session`, {
+        if (!qrKey) { setLoading(false); setSessionActive(false); return; }
+        const r = await axios.get(`${API}/start-session`, {
           params: { key: qrKey },
-          headers: {
-            'X-User-Latitude': userLocation.latitude,
-            'X-User-Longitude': userLocation.longitude,
-            'X-Location-Accuracy': userLocation.accuracy
-          }
+         
         });
-        
-        const { token, cafeId, tableId } = response.data;
-        if (cafeId) sessionStorage.setItem('c', cafeId);
+        const { token, cafeId } = r.data;
+        setCafeName(cafeId);
         localStorage.setItem('userToken', token);
-        if (tableId) {
-          sessionStorage.setItem('tai', tableId);
-        }
+        qp.delete('t');
+        navigate(`${location.pathname}${qp.toString() ? `?${qp}` : ''}`, { replace: true });
 
-        queryParams.delete("t");
-        const newSearch = queryParams.toString();
-        const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ""}`;
-        navigate(newUrl, { replace: true });
-
-        await loadProducts();
-
+        const r2 = await axios.get(`${API}/getUserItems`, { headers: { Authorization: `Bearer ${token}` } });
+        setProducts(r2.data.data);
+        setFiltered(r2.data.data);
+        setSessionActive(true);
+        setLoading(false);
+        setTimeout(() => setHeroVisible(true), 80);
       } catch (err) {
-        console.error('Session initialization failed:', err);
-        if (err.response?.status === 404) {
-          alert('Invalid QR code. Please scan a valid table QR code.');
-        } else if (err.response?.status === 403) {
-          const message = err.response?.data?.error || 'This table is currently inactive. Please contact staff.';
-          alert(message);
-        } else if (err.response?.status === 410) {
-          handleSessionExpired();
-        } else if (err.response?.status === 451) {
-          alert('You appear to be too far from the café. Please make sure you are at the location and try again.');
-        }
+        if (err.response?.status === 404)  alert('Invalid QR code.');
+        else if (err.response?.status === 403) alert(err.response?.data?.error || 'Table inactive.');
+        else if (err.response?.status === 410) expire();
+        else if (err.response?.status === 451) alert('Too far from the café.');
         setLoading(false);
         setSessionActive(false);
       }
-    };
-
-    initializeSession();
+    })();
   }, []);
 
+  /* ── socket — session invalidation only ────────────────────────── */
   useEffect(() => {
     if (!sessionActive) return;
-
-    const SOCKET_URL = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
-    const newSocket = io(SOCKET_URL, {
+    const url = process.env.REACT_APP_WS_URL || 'http://localhost:5000';
+    const s = io(url, {
       transports: ['websocket'],
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: Infinity,
       withCredentials: true,
-      auth: {
-        token: localStorage.getItem('userToken')
-      }
+      auth: { token: localStorage.getItem('userToken') },
     });
+    s.on('statusUpdated', () => expire());
+    return () => s.disconnect();
+  }, [sessionActive]);
 
-    newSocket.on('connect', () => {
-      console.log('Socket connected:', newSocket.id);
-      newSocket.emit('userJoin', { id: newSocket.id });
-    });
-
-    newSocket.on('orderStatusUpdate', (data) => {
-      console.log('Order status updated:', data);
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === data.orderId 
-            ? { ...order, status: data.status }
-            : order
-        )
-      );
-    });
-
-    newSocket.on('statusUpdated', (data) => {
-      console.log(data);
-      console.log('Session status updated - expired');
-      handleSessionExpired();
-    });
-
-    setSocket(newSocket);
-
-    return () => {
-      newSocket.disconnect();
-    };
-  }, [sessionActive, sessionData?.cafeId]);
-
-  const handleSessionExpired = () => {
+  const expire = () => {
     localStorage.removeItem('userToken');
-    localStorage.removeItem('userOrders');
     sessionStorage.removeItem('tai');
     setSessionExpired(true);
-    
-    setTimeout(() => {
-      window.location.href = 'https://www.google.com';
-    }, 5000);
+    setTimeout(() => { window.location.href = 'https://www.google.com'; }, 5000);
   };
 
-  const loadProducts = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/getUserItems`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-      });
-      console.log('first', response.data);
-      setProducts(response.data);
-      setFilteredProducts(response.data);
-      setSessionActive(true);
-      setLoading(false);
-    } catch (err) {
-      console.error('Failed to load products:', err);
-      if (err.response?.status === 401 || err.response?.status === 410) {
-        handleSessionExpired();
-      }
-      setLoading(false);
-      setSessionActive(false);
-    }
-  };
-
+  /* ── filter ────────────────────────────────────────────────────── */
   useEffect(() => {
-    let filtered = products;
+    let f = products;
+    if (search) f = f.filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+    if (cat !== 'all') f = f.filter(p => p.category === cat);
+    setFiltered(f);
+  }, [search, cat, products]);
 
-    if (searchTerm) {
-      filtered = filtered.filter((product) =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  const availableCats = ['all', ...Array.from(new Set(products.map(p => p.category)))];
 
-    if (categoryFilter !== 'all') {
-      filtered = filtered.filter((product) => product.category === categoryFilter);
-    }
-
-    setFilteredProducts(filtered);
-  }, [searchTerm, categoryFilter, products]);
-
-  const addToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product.id);
-    
-    if (existingItem) {
-      setCart(cart.map(item =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setCart([...cart, { ...product, quantity: 1, note: '' }]);
-    }
-
-    setAddedToCart(product.id);
-    setTimeout(() => setAddedToCart(null), 1000);
-  };
-
-  const updateQuantity = (productId, delta) => {
-    setCart(cart.map(item =>
-      item.id === productId
-        ? { ...item, quantity: Math.max(0, Math.min(item.stock, item.quantity + delta)) }
-        : item
-    ).filter(item => item.quantity > 0));
-  };
-
-  const updateItemNote = (productId, note) => {
-    setCart(cart.map(item =>
-      item.id === productId
-        ? { ...item, note: note }
-        : item
-    ));
-  };
-
-  const removeFromCart = (productId) => {
-    setCart(cart.filter(item => item.id !== productId));
-  };
-
-  const getTotalPrice = () => {
-    return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  };
-
-  const confirmOrder = async () => {
-    setShowConfirmation(false);
-    setOrderLoading(true);
-
-    const payload = {
-      items: cart.map(i => ({ 
-        itemId: i.id, 
-        quantity: i.quantity,
-        note: i.note || null 
-      }))
-    };
-
-    const newOrder = {
-      id: Date.now(),
-      date: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      items: cart.map(i => ({ 
-        id: i.id, 
-        name: i.name, 
-        quantity: i.quantity, 
-        price: i.price,
-        note: i.note || null 
-      })),
-      total: getTotalPrice(),
-      status: 'pending'
-    };
-
-    setOrders(prevOrders => [...prevOrders, newOrder]);
-    
-    try {
-      const response = await axios.post(`${API_BASE}/addOrder`, payload, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('userToken')}` }
-      });
-      socket.emit('userJoin', { id: response.data.orderId });
-      console.log('Order placed successfully:', response.data);
-      
-      setOrders(prevOrders => 
-        prevOrders.map(order => 
-          order.id === newOrder.id 
-            ? { ...order, id: response.data.orderId }
-            : order
-        )
-      );
-
-      setRefresh(!refresh);
-      setCart([]);
-      setOrderSuccess(true);
-      
-      setTimeout(() => {
-        setOrderSuccess(false);
-        setOpenCart(false);
-      }, 2000);
-
-    } catch (err) {
-      console.error('placeOrder error:', err);
-      alert('Failed to place order. Please try again.');
-      setOrders(prevOrders => prevOrders.filter(o => o.id !== newOrder.id));
-    } finally {
-      setOrderLoading(false);
-    }
-  };
-
-  const clearAllOrders = () => {
-    if (window.confirm('Are you sure you want to clear all orders?')) {
-      setOrders([]);
-      localStorage.removeItem('userOrders');
-    }
-  };
-
-  const categories = ['all', 'coffee', 'food', 'drink', 'dessert', 'games', 'smoking'];
-
-  if (sessionExpired) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="mb-8">
-            <img src="/images/coffai1.png" alt="CoffAI Logo" className="w-48 h-48 mx-auto" />
-          </div>
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20">
-            <h1 className="text-3xl font-bold text-white mb-4">Session Expired</h1>
-            <p className="text-blue-200 text-lg mb-6">
-              Your session has expired. Thank you for using {cafeName}!
-            </p>
-            <p className="text-slate-300 text-sm mb-4">
-              See you next time! 👋
-            </p>
-            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-slate-400 text-sm">
-              Redirecting...
-            </p>
-          </div>
+  /* ── splash screens ────────────────────────────────────────────── */
+  const Splash = ({ type }) => (
+    <div className="splash">
+      <div className="splash-orb o1" /><div className="splash-orb o2" /><div className="splash-orb o3" />
+      <div className="splash-card">
+        <div className="splash-logo-ring">
+          <img src="/images/coffai1.png" alt="CoffAI" style={{ width: 60, height: 60, objectFit: 'contain', position: 'relative', zIndex: 1 }} />
+          <div className="splash-ring-anim" />
         </div>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!sessionActive) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="text-center max-w-md">
-          <div className="mb-8">
-            <img src="/images/coffai1.png" alt="CoffAI Logo" className="w-48 h-48 mx-auto" />
-          </div>
-          <h1 className="text-3xl font-bold text-white mb-4">Welcome to CoffAI</h1>
-          <p className="text-blue-200 text-lg mb-6">
-            Please scan the QR code at your table to start ordering
-          </p>
-          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
-            <p className="text-white">
-              No active session detected. You need to scan a table QR code to access the menu.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-4 md:p-8">
-      <style>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(100%);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0.8);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        .animate-slideUp {
-          animation: slideUp 0.3s ease-out;
-        }
-
-        .animate-scaleIn {
-          animation: scaleIn 0.3s ease-out;
-        }
-      `}</style>
-
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-20 right-20 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-      </div>
-
-      <div className="relative z-10">
-        <div className="mb-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-8 shadow-2xl">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div className="flex items-center gap-4">
-              <img src="/images/coffai1.png" alt="CoffAI Logo" className="w-16 h-16" />
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold text-white mb-1">{cafeName} Menu</h1>
-                <p className="text-blue-300 text-sm md:text-base">Table {sessionStorage.getItem('tai') || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 bg-emerald-500/20 px-4 py-2 rounded-full border border-emerald-500/30">
-              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span className="text-emerald-300 text-sm font-medium">Session Active</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="mb-8 bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-xl">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-blue-400" size={20} />
-              <input
-                type="text"
-                placeholder="Search items..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 text-white placeholder-slate-400 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-              />
-            </div>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-4 py-3 bg-slate-900/50 border border-slate-700 text-white rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all min-w-[200px]"
-            >
-              {categories.map((cat) => (
-                <option key={cat} value={cat} className="bg-slate-900">
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 mb-24">
-          {filteredProducts.map((product, index) => (
-            <div
-              key={product.id}
-              className={`bg-slate-800/50 backdrop-blur-xl border border-slate-700/50 rounded-xl sm:rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:border-blue-500/50 ${!product.stock ? 'opacity-60' : ''}`}
-              style={{
-                animation: `fadeInUp 0.5s ease-out ${index * 0.05}s both`
-              }}
-            >
-              <div className="relative h-32 sm:h-48 lg:h-56 overflow-hidden bg-slate-900/50">
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                />
-                {!product.stock && (
-                  <div className="absolute top-1 right-1 sm:top-3 sm:right-3 bg-red-500 text-white px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-sm font-bold">
-                    Out
-                  </div>
-                )}
-                {addedToCart === product.id && (
-                  <div className="absolute inset-0 bg-green-500/30 flex items-center justify-center animate-pulse">
-                    <CheckCircle size={32} className="sm:w-12 sm:h-12 text-white" />
-                  </div>
-                )}
-                <span className="absolute top-1 left-1 sm:top-2 sm:left-2 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full text-[9px] sm:text-xs font-semibold">
-                  {product.category}
-                </span>
-              </div>
-              <div className="p-2 sm:p-4">
-                <h3 className="text-xs sm:text-base font-bold text-white mb-1 sm:mb-2 line-clamp-2 min-h-[32px] sm:min-h-[40px]">
-                  {product.name}
-                </h3>
-                <p className="text-sm sm:text-xl font-bold text-emerald-400 mb-2 sm:mb-3">
-                  {product.price.toFixed(2)} TnD
-                </p>
-                <button
-                  onClick={() => addToCart(product)}
-                  disabled={!product.stock}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold shadow-lg hover:shadow-blue-500/50 hover:from-blue-700 hover:to-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1 sm:gap-2 active:scale-95"
-                >
-                  <Plus size={14} className="sm:w-[18px] sm:h-[18px]" />
-                  <span className="text-[10px] sm:text-sm">Add</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <button
-          onClick={() => setOpenCart(true)}
-          className="fixed bottom-6 sm:bottom-8 right-6 sm:right-8 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 hover:shadow-blue-500/50 transition-transform flex items-center justify-center z-50"
-        >
-          <div className="relative">
-            <ShoppingCart size={24} className="sm:w-7 sm:h-7" />
-            {cart.length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold animate-bounce">
-                {cart.length}
-              </span>
-            )}
-          </div>
-        </button>
-
-        <button
-          onClick={() => setOpenOrders(true)}
-          className="fixed bottom-24 sm:bottom-28 right-6 sm:right-8 w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full shadow-2xl hover:scale-110 active:scale-95 hover:shadow-emerald-500/50 transition-transform flex items-center justify-center z-50"
-        >
-          <div className="relative">
-            <Receipt size={20} className="sm:w-6 sm:h-6" />
-            {orders.filter(o => o.status !== 'served').length > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                {orders.filter(o => o.status !== 'served').length}
-              </span>
-            )}
-          </div>
-        </button>
-
-        <ChatbotWaiter products={products} onAddToCart={addToCart} />
-
-        {openCart && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-slideUp">
-              <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-5 sm:p-6 flex justify-between items-center">
-                <h2 className="text-xl sm:text-2xl font-bold text-white">Your Cart</h2>
-                <button onClick={() => setOpenCart(false)} className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors active:scale-95">
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                {cart.length === 0 ? (
-                  <div className="text-center py-10">
-                    <ShoppingCart size={64} className="mx-auto text-slate-600 mb-4" />
-                    <p className="text-slate-400">Your cart is empty</p>
-                  </div>
-                ) : (
-                  <>
-                    {cart.map((item) => (
-                      <div key={item.id} className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 mb-3 transform transition-all hover:scale-[1.02]">
-                        <div className="flex justify-between items-center mb-3">
-                          <h3 className="font-semibold text-white text-sm sm:text-base">{item.name}</h3>
-                          <p className="font-bold text-emerald-400 text-sm sm:text-base">
-                            {(item.price * item.quantity).toFixed(2)} TnD
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3 mb-3">
-                          <button
-                            onClick={() => updateQuantity(item.id, -1)}
-                            className="w-8 h-8 bg-slate-700 hover:bg-slate-600 active:scale-95 rounded-lg flex items-center justify-center transition-all text-white"
-                          >
-                            <Minus size={16} />
-                          </button>
-                          <span className="font-semibold min-w-[30px] text-center text-white">{item.quantity}</span>
-                          <button
-                            onClick={() => updateQuantity(item.id, 1)}
-                            className="w-8 h-8 bg-slate-700 hover:bg-slate-600 active:scale-95 rounded-lg flex items-center justify-center transition-all text-white"
-                          >
-                            <Plus size={16} />
-                          </button>
-                          <button
-                            onClick={() => removeFromCart(item.id)}
-                            className="ml-auto text-red-400 hover:bg-red-500/20 active:scale-95 p-2 rounded-lg transition-colors"
-                          >
-                            <X size={20} />
-                          </button>
-                        </div>
-                        
-                        <div className="mt-3 pt-3 border-t border-slate-700">
-                          <label className="flex items-center gap-2 text-slate-300 text-xs sm:text-sm font-medium mb-2">
-                            <MessageSquare size={14} className="text-blue-400" />
-                            Add a note for this item (optional)
-                          </label>
-                          <textarea
-                            value={item.note || ''}
-                            onChange={(e) => updateItemNote(item.id, e.target.value)}
-                            placeholder="Special requests for this item..."
-                            maxLength={150}
-                            className="w-full px-3 py-2 bg-slate-800 border border-slate-600 text-white placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none text-sm"
-                            rows={2}
-                          />
-                          <p className="text-xs text-slate-500 mt-1 text-right">
-                            {(item.note || '').length}/150
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <div className="mt-6">
-                      <div className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white p-4 sm:p-5 rounded-xl">
-                        <p className="text-lg sm:text-xl font-bold">Total: {getTotalPrice().toFixed(2)} TnD</p>
-                      </div>
-                      <div className="mt-6 flex gap-3">
-                        <button
-                          onClick={() => setOpenCart(false)}
-                          disabled={orderLoading}
-                          className="flex-1 py-2.5 sm:py-3 px-4 sm:px-6 text-slate-300 hover:bg-slate-700 active:scale-95 rounded-xl font-semibold transition-all border border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-                        >
-                          Continue
-                        </button>
-                        <button
-                          onClick={() => setShowConfirmation(true)}
-                          disabled={cart.length === 0 || orderLoading}
-                          className="flex-1 py-2.5 sm:py-3 px-4 sm:px-6 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-blue-500/50 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
-                        >
-                          Place Order
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showConfirmation && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full shadow-2xl animate-scaleIn max-h-[90vh] overflow-y-auto">
-              <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-6 rounded-t-2xl">
-                <AlertCircle size={48} className="text-white mx-auto mb-3" />
-                <h2 className="text-2xl font-bold text-white text-center">Confirm Order</h2>
-              </div>
-              
-              <div className="p-6">
-                <p className="text-slate-300 text-center mb-6">
-                  Are you sure you want to place this order?
-                </p>
-                
-                <div className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 mb-4 max-h-[50vh] overflow-y-auto">
-                  <div className="space-y-3 mb-3">
-                    {cart.map((item) => (
-                      <div key={item.id} className="pb-3 border-b border-slate-700 last:border-0">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span className="text-slate-300">{item.quantity}x {item.name}</span>
-                          <span className="text-emerald-400 font-semibold">
-                            {(item.price * item.quantity).toFixed(2)} TnD
-                          </span>
-                        </div>
-                        {item.note && (
-                          <div className="bg-blue-500/10 border border-blue-500/20 rounded p-2 mt-2">
-                            <div className="flex items-start gap-2">
-                              <MessageSquare size={12} className="text-blue-400 mt-0.5 flex-shrink-0" />
-                              <p className="text-xs text-slate-300 italic">"{item.note}"</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="border-t border-slate-700 pt-3">
-                    <div className="flex justify-between">
-                      <span className="font-bold text-white">Total:</span>
-                      <span className="font-bold text-emerald-400 text-lg">
-                        {getTotalPrice().toFixed(2)} TnD
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowConfirmation(false)}
-                    className="flex-1 py-3 px-6 bg-slate-700 hover:bg-slate-600 active:scale-95 text-white rounded-xl font-semibold transition-all"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={confirmOrder}
-                    className="flex-1 py-3 px-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-95 text-white rounded-xl font-semibold shadow-lg transition-all"
-                  >
-                    Confirm
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {orderSuccess && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
-            <div className="bg-slate-800 border border-emerald-500 rounded-2xl p-8 text-center shadow-2xl animate-scaleIn">
-              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
-                <CheckCircle size={48} className="text-white" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Order Placed!</h2>
-              <p className="text-slate-300">Your order has been successfully placed</p>
-            </div>
-          </div>
-        )}
-
-        {openOrders && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-slideUp">
-              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 sm:p-6 flex justify-between items-center">
-                <h2 className="text-xl sm:text-2xl font-bold text-white">My Orders</h2>
-                <button onClick={() => setOpenOrders(false)} className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors active:scale-95">
-                  <X size={24} />
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-                {orders.length === 0 ? (
-                  <div className="text-center py-10">
-                    <Receipt size={64} className="mx-auto text-slate-600 mb-4" />
-                    <p className="text-slate-400">No orders yet</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {orders.slice().reverse().map((order, index) => (
-                      <div 
-                        key={order.id} 
-                        className="bg-slate-900/50 border border-slate-700 rounded-xl p-4 sm:p-5 transform transition-all hover:scale-[1.02]"
-                        style={{
-                          animation: `fadeInUp 0.3s ease-out ${index * 0.1}s both`
-                        }}
-                      >
-                        <div className="flex justify-between items-center mb-3">
-                          <h3 className="font-bold text-white text-sm sm:text-base">Order #{order.id}</h3>
-                          <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-semibold ${
-                            order.status === 'served' 
-                              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                              : order.status === 'preparing' 
-                              ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' 
-                              : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
-                          }`}>
-                            {order.status.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-xs sm:text-sm text-slate-400 mb-3">{order.date}</p>
-                        <div className="space-y-2 mb-3">
-                          {order.items.map((item, idx) => (
-                            <div key={idx}>
-                              <p className="text-xs sm:text-sm text-slate-300">
-                                {item.quantity}x {item.name} - {(item.price * item.quantity).toFixed(2)} TnD
-                              </p>
-                              {item.note && (
-                                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-2 mt-1 ml-4">
-                                  <div className="flex items-start gap-2">
-                                    <MessageSquare size={12} className="text-blue-400 mt-0.5 flex-shrink-0" />
-                                    <p className="text-xs text-slate-300 italic">"{item.note}"</p>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                        
-                        <div className="border-t border-slate-700 pt-3">
-                          <p className="font-bold text-emerald-400 text-right text-sm sm:text-base">
-                            Total: {order.total.toFixed(2)} TnD
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    <div className="bg-gradient-to-r from-emerald-600 to-teal-600 rounded-xl p-4 sm:p-5 mt-6">
-                      <div className="text-white">
-                        <p className="text-base sm:text-lg mb-2">Session Summary</p>
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs sm:text-sm opacity-90">Total Orders:</span>
-                          <span className="font-bold text-lg sm:text-xl">{orders.length}</span>
-                        </div>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-xs sm:text-sm opacity-90">Grand Total:</span>
-                          <span className="font-bold text-xl sm:text-2xl">
-                            {orders.reduce((sum, order) => sum + order.total, 0).toFixed(2)} TnD
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={clearAllOrders}
-                      className="w-full mt-4 py-2.5 sm:py-3 px-4 sm:px-6 bg-red-600/20 hover:bg-red-600/30 active:scale-95 text-red-400 border border-red-500/30 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 text-sm sm:text-base"
-                    >
-                      <X size={20} />
-                      Clear All Orders
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {orderLoading && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center">
-            <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 sm:p-8 shadow-2xl text-center animate-pulse">
-              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-white text-lg sm:text-xl font-semibold mb-2">Placing your order...</p>
-              <p className="text-slate-400 text-xs sm:text-sm">Please wait while we process your request</p>
-            </div>
-          </div>
-        )}
+        <h1 className="splash-h">
+          {type === 'expired' ? 'See you soon!'   :
+           type === 'loading' ? 'Setting up…'     : 'Welcome'}
+        </h1>
+        <p className="splash-p">
+          {type === 'expired' ? `Thanks for visiting${cafeName ? ` ${cafeName}` : ''}. Have a great day 👋` :
+           type === 'loading' ? 'Loading your menu, just a moment…'                                          :
+                                'Scan the QR code at your table to view the menu'}
+        </p>
+        {type !== 'inactive' && <div className="splash-spin" />}
       </div>
     </div>
   );
+
+  if (sessionExpired) return <><style>{CSS}</style><Splash type="expired" /></>;
+  if (loading)        return <><style>{CSS}</style><Splash type="loading" /></>;
+  if (!sessionActive) return <><style>{CSS}</style><Splash type="inactive" /></>;
+
+  /* ═══════════════════════════════════════════════════════════════ */
+  return (
+    <>
+      <style>{CSS}</style>
+
+      {/* offline banner */}
+      {!online && (
+        <div className="offline-bar">
+          <WifiOff size={13} /> No connection — reconnecting…
+        </div>
+      )}
+
+      <div className={`root ${heroVisible ? 'root-on' : ''}`}>
+
+        {/* atmosphere */}
+        <div className="atm" aria-hidden>
+          <div className="atm-1" /><div className="atm-2" /><div className="atm-3" />
+          <div className="atm-grid" />
+        </div>
+
+        {/* ── HEADER ─────────────────────────────────────────────── */}
+        <header className="hdr">
+          <div className="hdr-in">
+            {/* brand */}
+            <div className="brand">
+              <div className="brand-logo">
+                <img src="/images/coffai1.png" alt="" style={{ width: 38, height: 38, objectFit: 'contain', position: 'relative', zIndex: 1 }} />
+                <div className="brand-glow" />
+              </div>
+              <div>
+                <div className="brand-name">{cafeName+ ' Menu' || 'Our Menu'}</div>
+                <div className="brand-meta">
+                  <span>Live menu</span>
+                  {tableId && <><span className="sep">·</span><span>Table {tableId}</span></>}
+                </div>
+              </div>
+            </div>
+
+            {/* search trigger */}
+            <button className="srch-btn" onClick={() => searchRef.current?.focus()} aria-label="Search">
+              <Search size={16} />
+            </button>
+          </div>
+
+          {/* search input */}
+          <div className="srch-wrap">
+            <Search size={14} className="srch-icon" />
+            <input
+              ref={searchRef}
+              className="srch-input"
+              type="text"
+              placeholder="Search the menu…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button className="srch-clear" onClick={() => setSearch('')}><X size={13} /></button>
+            )}
+          </div>
+        </header>
+
+        {/* ── CATEGORIES ─────────────────────────────────────────── */}
+        <div className="cats-scroll">
+          <div className="cats-track">
+            {availableCats.map(c => {
+              const m  = CAT_META[c] || { emoji: '✦', label: c, gradient: 'linear-gradient(135deg,#1bcbe0,#1a6dd4)' };
+              const on = cat === c;
+              const n  = c === 'all' ? products.length : products.filter(p => p.category === c).length;
+              return (
+                <button
+                  key={c}
+                  className={`cat ${on ? 'cat-on' : ''}`}
+                  style={on ? { background: m.gradient, borderColor: 'transparent' } : {}}
+                  onClick={() => setCat(c)}
+                >
+                  <span className="cat-em">{m.emoji}</span>
+                  <span className="cat-lb">{m.label}</span>
+                  <span className="cat-n">{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── DIVIDER ────────────────────────────────────────────── */}
+        <div className="divider">
+          <span className="div-line" />
+          <span className="div-txt">
+            {cat === 'all' ? 'Full Menu' : (CAT_META[cat]?.label || cat)}
+            <span className="div-n"> · {filtered.length}</span>
+          </span>
+          <span className="div-line" />
+        </div>
+
+        {/* ── GRID ───────────────────────────────────────────────── */}
+        <main className="grid-wrap">
+          {filtered.length === 0 ? (
+            <div className="empty">
+              <div className="empty-ico">☕</div>
+              <p className="empty-t">Nothing found</p>
+              <p className="empty-s">Try a different search or category</p>
+              {search && (
+                <button className="empty-reset" onClick={() => setSearch('')}>Clear search</button>
+              )}
+            </div>
+          ) : (
+            <div className="grid">
+              {filtered.map((p, i) => {
+                const oos  = !p.stock;
+                const open = expandedCard === p.id;
+                const cm   = CAT_META[p.category] || { emoji: '✦', gradient: 'linear-gradient(135deg,#1bcbe0,#1a6dd4)' };
+                return (
+                  <article
+                    key={p.id}
+                    className={`card${oos ? ' card-oos' : ''}${open ? ' card-open' : ''}`}
+                    style={{ animationDelay: `${Math.min(i * 0.045, 0.38)}s` }}
+                    onClick={() => !oos && setExpandedCard(open ? null : p.id)}
+                  >
+                    {/* image */}
+                    <div className="card-img-wrap">
+                      <img className="card-img" src={p.imageUrl} alt={p.name} loading="lazy" />
+                      <div className="card-overlay" />
+                      {oos && (
+                        <div className="card-veil">
+                          <span className="oos-tag">Sold out</span>
+                        </div>
+                      )}
+                      {/* category dot */}
+                      <span className="card-cat-dot" style={{ background: cm.gradient }}>
+                        {cm.emoji}
+                      </span>
+                    </div>
+
+                    {/* body */}
+                    <div className="card-body">
+                      <p className="card-name">{p.name}</p>
+                      <div className="card-foot">
+                        <span className="card-price">
+                          {p.price.toFixed(2)}<small> TND</small>
+                        </span>
+                        {p.description && (
+                          <span className="card-chevron" style={{ transform: open ? 'rotate(180deg)' : 'none' }}>
+                            <ChevronDown size={13} />
+                          </span>
+                        )}
+                      </div>
+                      {open && p.description && (
+                        <p className="card-desc">{p.description}</p>
+                      )}
+                    </div>
+
+                    {/* hover shimmer */}
+                    <div className="card-shimmer" />
+                  </article>
+                );
+              })}
+            </div>
+          )}
+          <div style={{ height: 110 }} />
+        </main>
+
+        <ChatbotWaiter products={products} menuOnly />
+      </div>
+    </>
+  );
 }
 
-export default UserOrderPage;
+/* ─── CSS ─────────────────────────────────────────────────────────── */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+:root{
+  --bg:#07101e;--bg2:#0b1625;
+  --sur:rgba(255,255,255,.04);--sur2:rgba(255,255,255,.08);
+  --brd:rgba(255,255,255,.07);
+  --cyan:#1bcbe0;--cyan2:#1a6dd4;
+  --gold:#e8b86d;--gold2:#c9933a;
+  --green:#34d399;--red:#f87171;
+  --t:#ede7d6;--t2:#7a9ab8;--t3:#2b4460;
+  --r:14px;--rl:22px;
+  --serif:'DM Serif Display',Georgia,serif;
+  --sans:'DM Sans',system-ui,sans-serif;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-tap-highlight-color:transparent;scroll-behavior:smooth;}
+body{font-family:var(--sans);background:var(--bg);color:var(--t);overscroll-behavior:none;}
+button{font-family:var(--sans);cursor:pointer;}
+img{display:block;}
+
+/* OFFLINE */
+.offline-bar{
+  position:fixed;top:0;left:0;right:0;z-index:999;
+  background:rgba(248,113,113,.13);border-bottom:1px solid rgba(248,113,113,.28);
+  color:#f87171;font-size:.7rem;font-weight:600;letter-spacing:.07em;
+  padding:7px 16px;display:flex;align-items:center;gap:7px;
+  backdrop-filter:blur(14px);
+}
+
+/* SPLASH */
+.splash{
+  min-height:100svh;display:flex;align-items:center;justify-content:center;
+  background:var(--bg);position:relative;overflow:hidden;padding:32px;
+}
+.splash-orb{position:absolute;border-radius:50%;filter:blur(100px);pointer-events:none;}
+.o1{width:560px;height:560px;background:var(--cyan);opacity:.055;top:-180px;right:-130px;}
+.o2{width:480px;height:480px;background:var(--gold);opacity:.045;bottom:-140px;left:-110px;}
+.o3{width:320px;height:320px;background:var(--cyan2);opacity:.04;top:50%;left:50%;transform:translate(-50%,-50%);}
+.splash-card{position:relative;z-index:1;text-align:center;max-width:340px;}
+.splash-logo-ring{
+  width:110px;height:110px;border-radius:50%;margin:0 auto 28px;position:relative;
+  background:rgba(232,184,109,.07);border:1px solid rgba(232,184,109,.18);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 0 60px rgba(232,184,109,.1);
+}
+.splash-ring-anim{
+  position:absolute;inset:-12px;border-radius:50%;
+  border:1px dashed rgba(232,184,109,.2);
+  animation:spin-slow 14s linear infinite;
+}
+@keyframes spin-slow{to{transform:rotate(360deg);}}
+.splash-h{font-family:var(--serif);font-size:2.1rem;color:var(--t);margin-bottom:13px;line-height:1.1;}
+.splash-p{font-size:.88rem;color:var(--t2);line-height:1.78;margin-bottom:28px;}
+.splash-spin{
+  width:30px;height:30px;border-radius:50%;margin:0 auto;
+  border:2px solid rgba(27,203,224,.1);border-top-color:var(--cyan);
+  animation:spin .75s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ROOT */
+.root{min-height:100svh;position:relative;opacity:0;transition:opacity .55s var(--ease);}
+.root-on{opacity:1;}
+
+/* ATMOSPHERE */
+.atm{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden;}
+.atm-1,.atm-2,.atm-3{position:absolute;border-radius:50%;filter:blur(115px);}
+.atm-1{width:620px;height:620px;background:var(--cyan);opacity:.04;top:-200px;right:-140px;animation:af1 17s ease-in-out infinite;}
+.atm-2{width:520px;height:520px;background:var(--cyan2);opacity:.038;bottom:-150px;left:-120px;animation:af2 21s ease-in-out infinite;}
+.atm-3{width:360px;height:360px;background:var(--gold);opacity:.028;top:42%;left:46%;transform:translate(-50%,-50%);animation:af3 14s ease-in-out infinite;}
+@keyframes af1{0%,100%{transform:translate(0,0);}50%{transform:translate(-18px,24px);}}
+@keyframes af2{0%,100%{transform:translate(0,0);}50%{transform:translate(20px,-18px);}}
+@keyframes af3{0%,100%{transform:translate(-50%,-50%);}50%{transform:translate(calc(-50% + 14px),calc(-50% + 10px));}}
+.atm-grid{
+  position:absolute;inset:0;
+  background-image:linear-gradient(rgba(27,203,224,.022) 1px,transparent 1px),linear-gradient(90deg,rgba(27,203,224,.022) 1px,transparent 1px);
+  background-size:52px 52px;
+  mask-image:radial-gradient(ellipse 75% 75% at 50% 50%,black 10%,transparent 100%);
+}
+
+/* HEADER */
+.hdr{
+  position:sticky;top:0;z-index:40;
+  background:rgba(7,16,30,.9);backdrop-filter:blur(26px) saturate(180%);
+  border-bottom:1px solid var(--brd);padding:0 16px 12px;
+}
+.hdr-in{
+  max-width:900px;margin:0 auto;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:13px 0 10px;
+}
+.brand{display:flex;align-items:center;gap:11px;}
+.brand-logo{position:relative;width:38px;height:38px;flex-shrink:0;}
+.brand-glow{
+  position:absolute;inset:-5px;border-radius:50%;
+  background:radial-gradient(circle,rgba(232,184,109,.22),transparent 70%);
+  animation:glow-pulse 3.5s ease-in-out infinite;
+}
+@keyframes glow-pulse{0%,100%{opacity:.4;}50%{opacity:.9;}}
+.brand-name{
+  font-family:var(--serif);font-size:1.28rem;line-height:1;
+  background:linear-gradient(135deg,var(--gold) 0%,#f5d99a 50%,var(--gold2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.brand-meta{display:flex;align-items:center;gap:6px;font-size:.6rem;color:var(--t3);letter-spacing:.09em;text-transform:uppercase;margin-top:3px;}
+.live-dot{display:block;width:6px;height:6px;border-radius:50%;background:var(--green);animation:live 2.5s ease-out infinite;}
+@keyframes live{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5);}70%{box-shadow:0 0 0 8px rgba(52,211,153,0);}100%{box-shadow:0 0 0 0 rgba(52,211,153,0);}}
+.sep{opacity:.3;}
+.srch-btn{
+  width:37px;height:37px;border-radius:11px;border:1px solid var(--brd);
+  background:var(--sur);color:var(--t2);
+  display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.srch-btn:hover{background:var(--sur2);color:var(--t);}
+
+/* search */
+.srch-wrap{position:relative;max-width:900px;margin:0 auto;}
+.srch-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none;}
+.srch-input{
+  width:100%;padding:11px 40px;border-radius:var(--r);
+  border:1px solid var(--brd);background:var(--sur);
+  color:var(--t);font-family:var(--sans);font-size:.86rem;outline:none;
+  transition:border-color .2s,box-shadow .2s,background .2s;
+}
+.srch-input::placeholder{color:var(--t3);}
+.srch-input:focus{border-color:rgba(27,203,224,.35);box-shadow:0 0 0 3px rgba(27,203,224,.06);background:rgba(27,203,224,.025);}
+.srch-clear{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  width:23px;height:23px;border-radius:7px;border:none;
+  background:var(--sur2);color:var(--t3);
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.srch-clear:hover{color:var(--t);}
+
+/* CATEGORIES */
+.cats-scroll{overflow-x:auto;scrollbar-width:none;padding:14px 0 2px;position:relative;z-index:1;}
+.cats-scroll::-webkit-scrollbar{display:none;}
+.cats-track{display:flex;gap:8px;padding:0 16px;width:max-content;}
+.cat{
+  display:flex;align-items:center;gap:6px;padding:8px 14px;
+  border-radius:999px;border:1px solid var(--brd);background:var(--sur);
+  color:var(--t2);font-size:.77rem;font-weight:500;white-space:nowrap;
+  transition:all .22s var(--ease);flex-shrink:0;
+}
+.cat:hover{background:var(--sur2);color:var(--t);transform:translateY(-1px);}
+.cat-on{color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.38);transform:translateY(-1px);}
+.cat-em{font-size:.88rem;}
+.cat-lb{font-weight:600;}
+.cat-n{font-size:.64rem;opacity:.7;background:rgba(255,255,255,.14);padding:1px 6px;border-radius:999px;}
+
+/* DIVIDER */
+.divider{display:flex;align-items:center;gap:13px;padding:14px 16px 8px;position:relative;z-index:1;max-width:900px;margin:0 auto;}
+.div-line{flex:1;height:1px;background:var(--brd);}
+.div-txt{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--t3);white-space:nowrap;}
+.div-n{color:var(--t3);font-weight:400;}
+
+/* GRID */
+.grid-wrap{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:0 14px;}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:11px;}
+@media(min-width:480px){.grid{grid-template-columns:repeat(3,1fr);gap:13px;}}
+@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr);gap:15px;}}
+
+/* CARD */
+@keyframes card-in{
+  from{opacity:0;transform:translateY(20px) scale(.96);}
+  to{opacity:1;transform:translateY(0) scale(1);}
+}
+.card{
+  background:var(--sur);border:1px solid var(--brd);
+  border-radius:var(--r);overflow:hidden;position:relative;
+  cursor:pointer;animation:card-in .5s var(--ease) both;
+  transition:transform .32s var(--ease),border-color .3s,box-shadow .3s;
+  -webkit-tap-highlight-color:transparent;
+}
+.card:hover{
+  transform:translateY(-6px) scale(1.015);
+  border-color:rgba(232,184,109,.22);
+  box-shadow:0 18px 44px rgba(0,0,0,.45),0 0 0 1px rgba(232,184,109,.07);
+}
+.card:hover .card-img{transform:scale(1.08);}
+.card:hover .card-shimmer{opacity:1;}
+.card:active{transform:translateY(-2px) scale(1.005);}
+.card-oos{opacity:.45;pointer-events:none;}
+.card-open{border-color:rgba(27,203,224,.28);box-shadow:0 14px 40px rgba(0,0,0,.42),0 0 0 1px rgba(27,203,224,.1);}
+
+/* image */
+.card-img-wrap{position:relative;overflow:hidden;height:150px;background:#060e1a;}
+@media(min-width:480px){.card-img-wrap{height:168px;}}
+.card-img{width:100%;height:100%;object-fit:cover;transition:transform .5s var(--ease);}
+.card-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(to bottom,transparent 45%,rgba(7,16,30,.72) 100%);
+  pointer-events:none;
+}
+.card-veil{
+  position:absolute;inset:0;background:rgba(7,16,30,.7);
+  backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;
+}
+.oos-tag{
+  padding:5px 13px;border-radius:999px;
+  background:rgba(248,113,113,.1);color:#f87171;
+  font-size:.63rem;font-weight:700;border:1px solid rgba(248,113,113,.22);
+  letter-spacing:.08em;text-transform:uppercase;
+}
+.card-cat-dot{
+  position:absolute;top:8px;right:8px;
+  width:27px;height:27px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:.75rem;box-shadow:0 2px 10px rgba(0,0,0,.4);
+  border:1px solid rgba(255,255,255,.14);
+}
+
+/* body */
+.card-body{padding:10px 11px 12px;}
+.card-name{
+  font-size:.8rem;font-weight:500;color:var(--t);
+  line-height:1.4;margin-bottom:9px;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  min-height:33px;
+}
+.card-foot{display:flex;align-items:center;justify-content:space-between;}
+.card-price{font-family:var(--serif);font-size:1.05rem;color:var(--gold);}
+.card-price small{font-family:var(--sans);font-size:.6rem;color:var(--t3);}
+.card-chevron{
+  color:var(--t3);transition:transform .25s var(--ease);display:flex;align-items:center;
+}
+.card-desc{
+  font-size:.74rem;color:var(--t2);line-height:1.65;
+  margin-top:10px;padding-top:10px;border-top:1px solid var(--brd);
+  animation:card-in .3s var(--ease) both;
+}
+.card-shimmer{
+  position:absolute;inset:0;opacity:0;pointer-events:none;
+  background:linear-gradient(135deg,transparent 40%,rgba(255,255,255,.025) 50%,transparent 60%);
+  transition:opacity .4s;
+}
+
+/* EMPTY */
+.empty{padding:70px 0;text-align:center;}
+.empty-ico{font-size:3.5rem;opacity:.13;margin-bottom:16px;}
+.empty-t{color:var(--t2);font-weight:600;font-size:.95rem;}
+.empty-s{color:var(--t3);font-size:.82rem;margin-top:5px;}
+.empty-reset{
+  margin-top:18px;padding:9px 22px;border-radius:999px;
+  border:1px solid var(--brd);background:var(--sur);color:var(--t2);
+  font-size:.8rem;transition:all .2s;
+}
+.empty-reset:hover{background:var(--sur2);color:var(--t);}
+`;

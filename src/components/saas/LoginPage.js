@@ -6,406 +6,384 @@ import { setAccessToken } from '../../api/cafeApiInstance';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading]       = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  const [errors, setErrors] = useState({});
-  const [locationStatus, setLocationStatus] = useState(null);
+  const [loginError, setLoginError]     = useState('');
+  const [errors, setErrors]             = useState({});
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
 
-  const getUserLocation = () => {
-    return new Promise((resolve) => {
-      if (!navigator.geolocation) {
-        console.warn('Geolocation is not supported');
-        setLocationStatus('unavailable');
-        resolve(null);
-        return;
-      }
 
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocationStatus('granted');
-          resolve({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.warn('Location access denied or failed:', error.message);
-          setLocationStatus('denied');
-          resolve(null);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 5000,
-          maximumAge: 0
-        }
-      );
-    });
-  };
 
-  const LocationIndicator = () => {
-    if (!locationStatus) return null;
-    
-    return (
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm mt-2 ${
-        locationStatus === 'granted' 
-          ? 'bg-green-500/10 text-green-400 border border-green-500/30' 
-          : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
-      }`}>
-        <div className={`w-2 h-2 rounded-full ${
-          locationStatus === 'granted' ? 'bg-green-400' : 'bg-yellow-400'
-        }`}></div>
-        <span>
-          {locationStatus === 'granted' 
-            ? '📍 Location detected' 
-            : '⚠️ Location not available (optional)'}
-        </span>
-      </div>
-    );
-  };
-
+  /* ── Handlers ── */
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
-    }
-    // Clear login error when user starts typing
-    if (loginError) {
-      setLoginError('');
-    }
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    if (loginError) setLoginError('');
   };
 
   const validateForm = () => {
     const newErrors = {};
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Invalid email';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Minimum 6 characters';
-    }
-
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = 'Invalid email address';
+    if (!formData.password) newErrors.password = 'Password is required';
+    else if (formData.password.length < 6) newErrors.password = 'Minimum 6 characters';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     if (!validateForm()) return;
-    
-    setIsLoading(true);
-    setLoginError('');
-    
+    setIsLoading(true); setLoginError('');
     try {
-      // Try to get user's location (won't block if denied)
-      const location = await getUserLocation();
-      
-      // Prepare headers
-      const headers = {
-        'Content-Type': 'application/json'
-      };
-      
-      // Add location to headers if available
-      if (location) {
-        headers['X-User-Latitude'] = location.latitude;
-        headers['X-User-Longitude'] = location.longitude;
-        console.log('Sending location with login request');
-      } else {
-        console.log('Location not available - continuing without it');
-      }
-      
-      // Make login request with location headers
-      const response = await axios.post(
-        `${process.env.REACT_APP_API_URL}/login`,
-        formData,
-        { headers }
-      );
-      
-      setAccessToken(response.data.accessToken);
-      setIsLoading(false);
-      setLoginSuccess(true);
-      
-      // Optional: Check if location was set
-      if (location && response.data.cafe?.locationSet === false) {
-        console.log('✅ Café location has been set successfully');
-      }
-      
-      setTimeout(() => {
-        navigate('/admin');
-      }, 2000);
-      
+      const headers  = { 'Content-Type': 'application/json' };
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/login`, formData, { headers,
+  withCredentials: true
+       },);
+      setAccessToken(response.data.data.accessToken);
+      setIsLoading(false); setLoginSuccess(true);
+      setTimeout(() => navigate('/admin'), 2000);
     } catch (err) {
-      console.log(err);
       setIsLoading(false);
-      
-      // Handle different error types
       if (err.response) {
-        // Server responded with error status
-        if (err.response.status === 403) {
-          // Subscription expired
-          setLoginError('Your subscription has expired. Redirecting to subscription page...');
-          setTimeout(() => {
-            window.location.href = err.response.data.redirectTo || 'https://coffai.tn/login';
-          }, 2000);
-        } else if (err.response.status === 401 || err.response.status === 400) {
-          setLoginError('Incorrect email or password. Please try again.');
-        } else if (err.response.status === 404) {
-          setLoginError('Account not found. Please check your email.');
-        } else {
-          setLoginError('Login failed. Please try again later.');
-        }
-      } else if (err.request) {
-        // Request made but no response
-        setLoginError('Cannot connect to server. Please check your internet connection.');
-      } else {
-        // Other errors
-        setLoginError('An unexpected error occurred. Please try again.');
-      }
+        if      (err.response.status === 403) { setLoginError('Your subscription has expired. Redirecting…'); setTimeout(() => { window.location.href = err.response.data.redirectTo || 'https://coffai.tn/login'; }, 2000); }
+        else if (err.response.status === 401 || err.response.status === 400) setLoginError('Incorrect email or password. Please try again.');
+        else if (err.response.status === 404) setLoginError('Account not found. Please check your email.');
+        else    setLoginError('Login failed. Please try again later.');
+      } else if (err.request) setLoginError('Cannot connect to server. Check your internet connection.');
+      else setLoginError('An unexpected error occurred. Please try again.');
     }
   };
 
+  /* ── Success screen ── */
   if (loginSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-6">
-        <div className="glass rounded-3xl p-12 text-center max-w-md w-full animate-in">
-          <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 animate-bounce">
-            <CheckCircle2 size={48} />
-          </div>
-          <h3 className="text-3xl font-bold mb-4 gradient-text">Login Successful! 🎉</h3>
-          <p className="text-xl text-gray-400 mb-6">
-            Welcome to CoffAI
-          </p>
-          <p className="text-gray-500">
-            Redirecting to your dashboard...
-          </p>
-          <div className="mt-6">
-            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-blue-600 to-cyan-600 animate-progress"></div>
-            </div>
+      <>
+        <style>{STYLES}</style>
+        <div className="lp-root">
+          <div className="lp-blob lp-blob1"/><div className="lp-blob lp-blob2"/><div className="lp-blob lp-blob3"/>
+          <div className="lp-grid"/>
+          <div className="lp-success-wrap">
+            <div className="lp-success-icon"><CheckCircle2 size={40} color="#fff"/></div>
+            <h2 className="lp-success-title">Login Successful! 🎉</h2>
+            <p className="lp-success-sub">Welcome back to CoffAI</p>
+            <p className="lp-success-note">Redirecting to your dashboard…</p>
+            <div className="lp-progress-track"><div className="lp-progress-bar"/></div>
           </div>
         </div>
-
-        <style>{`
-          @keyframes progress {
-            from { width: 0%; }
-            to { width: 100%; }
-          }
-          .animate-progress {
-            animation: progress 2s ease-out forwards;
-          }
-          .animate-in {
-            animation: slideIn 0.5s ease-out;
-          }
-          @keyframes slideIn {
-            from {
-              opacity: 0;
-              transform: scale(0.9) translateY(20px);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1) translateY(0);
-            }
-          }
-        `}</style>
-      </div>
+      </>
     );
   }
 
+  /* ── Main login ── */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-white overflow-hidden">
-      <style>{`
-        @keyframes floating {
-          0%, 100% { transform: translateY(0px) rotate(0deg); }
-          50% { transform: translateY(-20px) rotate(5deg); }
-        }
-        
-        @keyframes gradient-shift {
-          0%, 100% { background-position: 0% 50%; }
-          50% { background-position: 100% 50%; }
-        }
+    <>
+      <style>{STYLES}</style>
+      <div className="lp-root">
+        {/* Background */}
+        <div className="lp-blob lp-blob1"/><div className="lp-blob lp-blob2"/><div className="lp-blob lp-blob3"/>
+        <div className="lp-grid"/>
 
-        .gradient-text {
-          background: linear-gradient(90deg, #3b82f6, #06b6d4, #0ea5e9);
-          background-size: 200% 200%;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          animation: gradient-shift 3s ease infinite;
-        }
-
-        .glass {
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .grid-bg {
-          background-image: 
-            linear-gradient(rgba(59, 130, 246, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(59, 130, 246, 0.1) 1px, transparent 1px);
-          background-size: 50px 50px;
-        }
-
-        .floating {
-          animation: floating 3s ease-in-out infinite;
-        }
-
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-          50% { box-shadow: 0 0 40px rgba(59, 130, 246, 0.8); }
-        }
-
-        .glow-btn {
-          animation: glow 2s ease-in-out infinite;
-        }
-      `}</style>
-
-      <div className="fixed inset-0 grid-bg"></div>
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating"></div>
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-indigo-600 rounded-full mix-blend-multiply filter blur-3xl opacity-20 floating" style={{animationDelay: '2s'}}></div>
-      </div>
-
-      <div className="fixed top-6 left-6 z-50">
-        <button onClick={() => window.history.back()} className="glass px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition">
-          <ArrowLeft size={20} />
-          <span className="hidden sm:inline">Back</span>
+        {/* Back button */}
+        <button className="lp-back" onClick={() => window.history.back()}>
+          <ArrowLeft size={17}/> Back
         </button>
-      </div>
 
-      <div className="relative min-h-screen flex items-center justify-center p-6">
-        <div className="max-w-md w-full">
-          <div className="text-center mb-8">
-            <div className="flex items-center justify-center gap-2 text-3xl font-bold mb-4">
-              <img className='w-[50px]' src='/images/coffai1.png'/>
-              <span className="gradient-text">CoffAI</span>
+        {/* Card */}
+        <div className="lp-center">
+          <div className="lp-card">
+
+            {/* Logo */}
+            <div className="lp-logo">
+              <img src="/images/coffai1.png" alt="CoffAI" className="lp-logo-img"/>
+              <span className="lp-logo-text">CoffAI</span>
             </div>
-            <h1 className="text-3xl font-bold mb-2">
-              Welcome Back!
-            </h1>
-            <p className="text-gray-400">
-              Log in to your dashboard
-            </p>
-          </div>
 
-          <div className="glass rounded-3xl p-8 mb-6">
+            <h1 className="lp-title">Welcome back</h1>
+            <p className="lp-subtitle">Log in to your café dashboard</p>
+
+            {/* Error banner */}
             {loginError && (
-              <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/50 flex items-start gap-3">
-                <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+              <div className="lp-error-banner">
+                <AlertCircle size={18} className="lp-error-icon"/>
                 <div>
-                  <p className="text-red-400 font-semibold mb-1">Login Failed</p>
-                  <p className="text-red-300 text-sm">{loginError}</p>
+                  <p className="lp-error-title">Login failed</p>
+                  <p className="lp-error-msg">{loginError}</p>
                 </div>
               </div>
             )}
 
-            <div className="mb-4">
-              <label className="block text-sm font-semibold mb-2 text-gray-300">
-                Email <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            {/* Email */}
+            <div className="lp-field">
+              <label className="lp-label">Email <span className="lp-req">*</span></label>
+              <div className="lp-input-wrap">
+                <Mail size={17} className="lp-input-icon"/>
                 <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="youremail@example.com"
-                  className={`w-full pl-12 pr-4 py-3 rounded-xl bg-white/5 border ${
-                    errors.email ? 'border-red-500' : 'border-white/10'
-                  } text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition`}
+                  type="email" name="email" value={formData.email}
+                  onChange={handleChange} placeholder="youremail@example.com"
+                  className={`lp-input lp-input-pad-l ${errors.email ? 'lp-input-err' : ''}`}
                 />
               </div>
-              {errors.email && (
-                <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
-                  <AlertCircle size={14} /> {errors.email}
-                </p>
-              )}
+              {errors.email && <p className="lp-field-error"><AlertCircle size={13}/>{errors.email}</p>}
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-semibold mb-2 text-gray-300">
-                Password <span className="text-red-400">*</span>
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            {/* Password */}
+            <div className="lp-field">
+              <label className="lp-label">Password <span className="lp-req">*</span></label>
+              <div className="lp-input-wrap">
+                <Lock size={17} className="lp-input-icon"/>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  className={`w-full pl-12 pr-12 py-3 rounded-xl bg-white/5 border ${
-                    errors.password ? 'border-red-500' : 'border-white/10'
-                  } text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 transition`}
+                  type={showPassword ? 'text' : 'password'} name="password" value={formData.password}
+                  onChange={handleChange} placeholder="••••••••"
+                  className={`lp-input lp-input-pad-l lp-input-pad-r ${errors.password ? 'lp-input-err' : ''}`}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
-                >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                <button type="button" className="lp-eye" onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <EyeOff size={17}/> : <Eye size={17}/>}
                 </button>
               </div>
-              {errors.password && (
-                <p className="text-red-400 text-sm mt-1 flex items-center gap-1">
-                  <AlertCircle size={14} /> {errors.password}
-                </p>
-              )}
-              <LocationIndicator />
+              {errors.password && <p className="lp-field-error"><AlertCircle size={13}/>{errors.password}</p>}
+
+
             </div>
 
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isLoading}
-              className={`w-full px-6 py-4 rounded-xl text-lg font-semibold transition ${
-                isLoading 
-                  ? 'bg-gray-600 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:scale-[1.02] glow-btn'
-              }`}
-            >
+            {/* Submit */}
+            <button type="button" onClick={handleSubmit} disabled={isLoading}
+              className={`lp-submit ${isLoading ? 'lp-submit-loading' : ''}`}>
               {isLoading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  Logging in...
-                </span>
+                <span className="lp-submit-inner"><span className="lp-spinner"/>Logging in…</span>
               ) : (
-                <span>Log In</span>
+                <span className="lp-submit-inner">Log In →</span>
               )}
             </button>
-          </div>
 
-          <div className="text-center glass rounded-2xl p-4">
-            <p className="text-gray-400">
-              Don't have an account?
-              {' '}
-              <button
-                onClick={() => navigate('/#form')}
-                className="text-blue-400 hover:text-blue-300 font-semibold transition"
-              >
-                Sign up
+            {/* Sign up link */}
+            <p className="lp-signup-row">
+              Don't have an account?{' '}
+              <button className="lp-signup-link" onClick={() => navigate('/#form')}>
+                Sign up free
               </button>
             </p>
+
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
+
+/* ─── Styles ─── */
+const STYLES = `
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+  .lp-root {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    min-height: 100vh;
+    background: #0d1f3c;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden;
+    padding: 24px;
+  }
+
+  /* ── Background blobs ── */
+  .lp-blob {
+    position: absolute; border-radius: 50%;
+    filter: blur(80px); pointer-events: none;
+  }
+  .lp-blob1 { width:500px;height:500px; background:#1bcbe0; opacity:.12; top:-100px;right:-80px;
+    animation:lp-blob1 12s ease-in-out infinite; }
+  .lp-blob2 { width:420px;height:420px; background:#1a6dd4; opacity:.12; bottom:-80px;left:-60px;
+    animation:lp-blob2 15s ease-in-out infinite; }
+  .lp-blob3 { width:280px;height:280px; background:#1bcbe0; opacity:.08; top:45%;left:35%;
+    animation:lp-blob3 10s ease-in-out infinite; }
+  @keyframes lp-blob1 { 0%,100%{transform:translate(0,0) scale(1);}  50%{transform:translate(-30px,25px) scale(1.08);} }
+  @keyframes lp-blob2 { 0%,100%{transform:translate(0,0) scale(1);}  50%{transform:translate(25px,-35px) scale(1.06);} }
+  @keyframes lp-blob3 { 0%,100%{transform:translate(0,0) scale(1);}  50%{transform:translate(-15px,15px) scale(.92);} }
+
+  /* ── Dot grid ── */
+  .lp-grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(27,203,224,.14) 1px, transparent 1px);
+    background-size: 36px 36px;
+  }
+
+  /* ── Back button ── */
+  .lp-back {
+    position: fixed; top: 20px; left: 20px; z-index: 50;
+    display: flex; align-items: center; gap: 7px;
+    font-family: inherit; font-size: .82rem; font-weight: 600;
+    color: #7a9dc0; cursor: pointer;
+    background: rgba(255,255,255,.05);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(27,203,224,.14);
+    padding: 8px 16px; border-radius: 999px;
+    transition: all .22s;
+  }
+  .lp-back:hover { color: #1bcbe0; border-color: rgba(27,203,224,.35); background: rgba(27,203,224,.07); }
+
+  /* ── Center wrapper ── */
+  .lp-center {
+    position: relative; z-index: 2;
+    width: 100%; max-width: 440px;
+  }
+
+  /* ── Card ── */
+  .lp-card {
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(27,203,224,.18);
+    border-radius: 28px;
+    padding: 44px 40px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.35), 0 0 0 1px rgba(27,203,224,.06);
+  }
+  @media (max-width: 480px) { .lp-card { padding: 32px 24px; } }
+
+  /* ── Logo ── */
+  .lp-logo {
+    display: flex; align-items: center; gap: 10px;
+    justify-content: center; margin-bottom: 28px;
+  }
+  .lp-logo-img { width: 42px; }
+  .lp-logo-text {
+    font-size: 1.5rem; font-weight: 800; letter-spacing: -.01em;
+    background: linear-gradient(135deg, #1bcbe0, #1a6dd4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  /* ── Heading ── */
+  .lp-title {
+    font-size: 1.75rem; font-weight: 800; letter-spacing: -.02em;
+    color: #fff; text-align: center; margin: 0 0 8px;
+  }
+  .lp-subtitle {
+    font-size: .9rem; color: #4a7099; text-align: center; margin: 0 0 28px;
+  }
+
+  /* ── Error banner ── */
+  .lp-error-banner {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: rgba(248,113,113,.08);
+    border: 1px solid rgba(248,113,113,.3);
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 20px;
+  }
+  .lp-error-icon { color: #f87171; flex-shrink: 0; margin-top: 1px; }
+  .lp-error-title { font-size: .82rem; font-weight: 700; color: #f87171; margin-bottom: 2px; }
+  .lp-error-msg   { font-size: .78rem; color: #fca5a5; }
+
+  /* ── Field ── */
+  .lp-field { margin-bottom: 18px; }
+  .lp-label {
+    display: block; font-size: .72rem; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: #4a7099; margin-bottom: 8px;
+  }
+  .lp-req { color: #f87171; margin-left: 2px; }
+
+  .lp-input-wrap { position: relative; }
+  .lp-input-icon {
+    position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+    color: #2a4a6a; pointer-events: none;
+  }
+  .lp-input {
+    width: 100%; padding: 12px 14px; border-radius: 13px;
+    background: rgba(255,255,255,.04);
+    border: 1px solid rgba(27,203,224,.14);
+    color: #e8f4ff; font-size: .9rem; font-family: inherit;
+    transition: border-color .2s, box-shadow .2s; outline: none;
+    box-sizing: border-box;
+  }
+  .lp-input::placeholder { color: #1e3a5a; }
+  .lp-input:focus { border-color: rgba(27,203,224,.5); box-shadow: 0 0 0 3px rgba(27,203,224,.08); }
+  .lp-input-pad-l { padding-left: 42px; }
+  .lp-input-pad-r { padding-right: 42px; }
+  .lp-input-err   { border-color: rgba(248,113,113,.45) !important; }
+
+  .lp-eye {
+    position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; color: #2a4a6a;
+    transition: color .2s; padding: 0;
+  }
+  .lp-eye:hover { color: #1bcbe0; }
+
+  .lp-field-error {
+    display: flex; align-items: center; gap: 5px;
+    font-size: .76rem; color: #f87171; margin-top: 6px;
+  }
+
+
+
+  /* ── Submit ── */
+  .lp-submit {
+    width: 100%; padding: 14px; border-radius: 14px; border: none; cursor: pointer;
+    font-family: inherit; font-size: .95rem; font-weight: 700;
+    background: linear-gradient(135deg, #1bcbe0, #1a6dd4);
+    color: #fff;
+    box-shadow: 0 6px 28px rgba(27,203,224,.38);
+    transition: all .28s; margin-bottom: 20px;
+  }
+  .lp-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 36px rgba(27,203,224,.55); }
+  .lp-submit:active { transform: translateY(0); }
+  .lp-submit-loading { background: #1e3a5a !important; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+  .lp-submit-inner  { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+  .lp-spinner {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.2);
+    border-top-color: #fff;
+    animation: lp-spin .7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes lp-spin { to { transform: rotate(360deg); } }
+
+  /* ── Signup link ── */
+  .lp-signup-row {
+    text-align: center; font-size: .85rem; color: #4a7099; margin: 0;
+  }
+  .lp-signup-link {
+    background: none; border: none; cursor: pointer; font-family: inherit;
+    font-size: .85rem; font-weight: 700;
+    background: linear-gradient(135deg, #1bcbe0, #1a6dd4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    transition: opacity .2s;
+  }
+  .lp-signup-link:hover { opacity: .75; }
+
+  /* ── Success screen ── */
+  .lp-success-wrap {
+    position: relative; z-index: 2;
+    background: rgba(255,255,255,.04);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(27,203,224,.18);
+    border-radius: 28px; padding: 56px 40px;
+    text-align: center; max-width: 420px; width: 100%;
+    box-shadow: 0 24px 80px rgba(0,0,0,.35);
+  }
+  .lp-success-icon {
+    width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 24px;
+    background: linear-gradient(135deg, #34d399, #059669);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 32px rgba(52,211,153,.4);
+    animation: lp-pop .7s cubic-bezier(.16,1,.3,1);
+  }
+  @keyframes lp-pop { 0%{transform:scale(.4);opacity:0;} 100%{transform:scale(1);opacity:1;} }
+
+  .lp-success-title {
+    font-size: 1.6rem; font-weight: 800; margin-bottom: 10px;
+    background: linear-gradient(135deg, #1bcbe0, #1a6dd4);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .lp-success-sub  { font-size: 1rem; color: #c8dff0; margin-bottom: 6px; }
+  .lp-success-note { font-size: .85rem; color: #4a7099; margin-bottom: 28px; }
+
+  .lp-progress-track {
+    width: 100%; height: 4px; background: rgba(255,255,255,.08);
+    border-radius: 999px; overflow: hidden;
+  }
+  .lp-progress-bar {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #1bcbe0, #1a6dd4);
+    animation: lp-progress 2s ease-out forwards;
+  }
+  @keyframes lp-progress { from{width:0%} to{width:100%} }
+`;

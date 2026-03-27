@@ -1,622 +1,795 @@
-import { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, Bot, User, Sparkles, ShoppingCart, Coffee, Utensils, Wine, Cake } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { MessageCircle, X, Send, Bot, User, Sparkles, Coffee, Star, Tag, Zap, ChevronRight } from 'lucide-react';
 
-export default function ChatbotWaiter({ products, onAddToCart }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(true);
-  const [messages, setMessages] = useState([
-    {
-      id: '1',
-      text: "Hello! 👋 I'm Alex, your personal AI waiter ! How can I help you today?",
-      sender: 'bot',
-      timestamp: new Date(),
-      options: [
-        { id: 'menu', text: ' Browse Menu', icon: '📋' },
-        { id: 'recommend', text: ' Get Recommendations', icon: '⭐' },
-        { id: 'popular', text: ' Popular Items', icon: '🔥' },
-        { id: 'order', text: ' How to Order', icon: '🛒' }
-      ]
-    }
-  ]);
-  const [inputValue, setInputValue] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
-  const [hasNewMessage, setHasNewMessage] = useState(false);
-  const messagesEndRef = useRef(null);
+/* ─── demo data (replace with real products prop) ───────────── */
+const DEMO_PRODUCTS = [
+  { id: 1,  name: 'Espresso Doppio',       price: 2.80,  category: 'coffee',  stock: 1, imageUrl: 'https://images.unsplash.com/photo-1510707577719-ae7c14805e3a?w=200&q=80', description: 'Double shot of our signature Ethiopian blend. Intense, syrupy, with notes of dark chocolate.', mood_tags: ['energizing'], flavor_tags: ['bitter','intense'], is_bestseller: true,  caffeine_level: 'high',   pairs_with: [3] },
+  { id: 2,  name: 'Café Crème',            price: 3.50,  category: 'coffee',  stock: 1, imageUrl: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=200&q=80', description: 'Espresso crowned with silky microfoam. Our most ordered drink on weekend mornings.', mood_tags: ['comforting'], flavor_tags: ['creamy','smooth'], is_bestseller: true,  caffeine_level: 'medium', pairs_with: [7] },
+  { id: 3,  name: 'Matcha Latte Glacé',    price: 5.90,  category: 'coffee',  stock: 1, imageUrl: 'https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=200&q=80', description: 'Ceremonial-grade Japanese matcha, oat milk, a whisper of vanilla. Vegan & lactose-free.', mood_tags: ['calming'], flavor_tags: ['earthy','sweet'], is_bestseller: false, caffeine_level: 'low',    dietary_labels: ['vegan','lactose-free'], pairs_with: [8] },
+  { id: 4,  name: 'Cold Brew Reserve',     price: 4.80,  category: 'coffee',  stock: 1, imageUrl: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=200&q=80', description: '18-hour slow-steeped single origin. Served over crystal ice. Smooth, never acidic.', mood_tags: ['energizing'], flavor_tags: ['smooth','bold'], is_bestseller: false, caffeine_level: 'high',   hidden_gem: true },
+  { id: 5,  name: 'Cappuccino Classique',  price: 3.20,  category: 'coffee',  stock: 1, imageUrl: 'https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=200&q=80', description: 'Equal thirds espresso, steamed milk, dense foam. Exactly as it should be.', mood_tags: ['comforting'], flavor_tags: ['creamy','balanced'], is_bestseller: false, caffeine_level: 'medium' },
+  { id: 6,  name: 'Smoothie Mangue',       price: 4.50,  category: 'drink',   stock: 1, imageUrl: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=200&q=80', description: 'Alphonso mango, passion fruit, hint of lime. No dairy, no caffeine, pure tropics.', mood_tags: ['refreshing'], flavor_tags: ['fruity','sweet'], dietary_labels: ['vegan','caffeine-free'], caffeine_level: 'none' },
+  { id: 7,  name: 'Croissant au Beurre',   price: 3.20,  category: 'food',    stock: 1, imageUrl: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=200&q=80', description: 'Flown in butter, 72-hour laminated dough. Shatters on first bite.', mood_tags: ['comforting'], flavor_tags: ['buttery','flaky'] },
+  { id: 8,  name: 'Tarte Citron',          price: 4.20,  category: 'dessert', stock: 1, imageUrl: 'https://images.unsplash.com/photo-1519915028121-7d3463d20b13?w=200&q=80', description: 'Sharp lemon curd in a crisp shortcrust shell, topped with Italian meringue.', mood_tags: ['refreshing'], flavor_tags: ['tangy','sweet'] },
+  { id: 9,  name: 'Plateau Fromages',      price: 8.90,  category: 'food',    stock: 0, imageUrl: 'https://images.unsplash.com/photo-1452195100486-9cc805987862?w=200&q=80', description: 'Seasonal selection of 4 cheeses, honeycomb, house-pickled grapes.', mood_tags: ['relaxing'], flavor_tags: ['savory','rich'] },
+  { id: 10, name: 'Chess & Backgammon',    price: 2.00,  category: 'games',   stock: 1, imageUrl: 'https://images.unsplash.com/photo-1528819622765-d6bcf132f793?w=200&q=80', description: 'Rent a premium wooden set for your table. Includes a complimentary mint tea.', mood_tags: ['relaxing'], flavor_tags: [] },
+];
 
-  // Show welcome animation on first load
+const CAT_EMOJI = { coffee:'☕', food:'🍽️', drink:'🥤', dessert:'🍰', games:'🎲', smoking:'🚬' };
+
+/* ─── quick-reply chips shown at start ─────────────────────── */
+const QUICK_CHIPS = [
+  { id: 'bestsellers', text: 'What\'s popular?',    emoji: '🔥' },
+  { id: 'surprise',    text: 'Surprise me',          emoji: '✨' },
+  { id: 'nodairy',     text: 'No dairy options',     emoji: '🌿' },
+  { id: 'deals',       text: 'Any combos / deals?',  emoji: '🎁' },
+  { id: 'energy',      text: 'I need energy',        emoji: '⚡' },
+  { id: 'chill',       text: 'Something relaxing',   emoji: '🌙' },
+];
+
+/* ─── response engine ───────────────────────────────────────── */
+function getResponse(id, products) {
+  const lm    = id.toLowerCase().trim();
+  const avail = products.filter(p => p.stock > 0);
+
+  /* category drill-down */
+  if (lm.startsWith('cat_')) {
+    const cat   = lm.replace('cat_', '');
+    const items = avail.filter(p => p.category === cat);
+    if (!items.length) return { text: `No ${cat} items available right now. Try another?`, chips: defaultChips() };
+    return { text: `Here are our ${cat} options ✦`, items: items.slice(0, 5), chips: backChips() };
+  }
+
+  /* price search */
+  const pm = lm.match(/under\s+(\d+)/);
+  if (pm) {
+    const max = parseFloat(pm[1]);
+    const items = avail.filter(p => p.price <= max);
+    if (!items.length) return { text: `Nothing under ${max} TND right now. Want to browse by category?`, chips: catChips(products) };
+    return { text: `Great picks under ${max} TND:`, items: items.slice(0, 5), chips: backChips() };
+  }
+
+  /* name search */
+  const nameMatch = avail.filter(p => p.name.toLowerCase().includes(lm));
+  if (nameMatch.length && lm.length > 2)
+    return { text: `Found ${nameMatch.length} result${nameMatch.length > 1 ? 's' : ''}:`, items: nameMatch.slice(0, 5), chips: backChips() };
+
+  /* intents */
+  if (lm === 'home' || lm.match(/^(hi|hello|hey|start|menu)$/))
+    return { text: "Welcome back ✦ What are you in the mood for today?", chips: QUICK_CHIPS };
+
+  if (lm === 'categories' || lm === 'browse')
+    return { text: "Choose a category to explore:", chips: catChips(products) };
+
+  if (lm === 'bestsellers' || lm.match(/\b(popular|best|top|most ordered)\b/)) {
+    const items = avail.filter(p => p.is_bestseller);
+    return { text: "Our most loved items right now 🔥", items: items.length ? items : avail.slice(0, 4), chips: backChips() };
+  }
+
+  if (lm === 'surprise') {
+    const gems = avail.filter(p => p.hidden_gem || p.curator_pick);
+    const pool = gems.length ? gems : avail;
+    const item = pool[Math.floor(Math.random() * pool.length)];
+    return {
+      text: `Here's something not everyone orders — but those who do, always come back for it:`,
+      items: [item],
+      chips: [{ id: 'surprise', text: 'Try again ✦', emoji: '🎲' }, ...backChips()],
+    };
+  }
+
+  if (lm === 'nodairy' || lm.match(/\b(dairy|lactose|vegan|plant)\b/)) {
+    const items = avail.filter(p => p.dietary_labels?.some(d => ['vegan','lactose-free'].includes(d)));
+    if (!items.length) return { text: "I'll check our full menu — ask our staff about dairy-free customizations too!", chips: backChips() };
+    return { text: "Dairy-free options you'll love 🌿", items, chips: backChips() };
+  }
+
+  if (lm === 'energy' || lm.match(/\b(energy|wake|caffeine|kick|boost)\b/)) {
+    const items = avail.filter(p => p.caffeine_level === 'high' || p.caffeine_level === 'medium');
+    return { text: "These will wake you right up ⚡", items: items.slice(0, 4), chips: backChips() };
+  }
+
+  if (lm === 'chill' || lm.match(/\b(relax|calm|chill|unwind|slow)\b/)) {
+    const items = avail.filter(p => p.mood_tags?.includes('calming') || p.mood_tags?.includes('relaxing') || p.caffeine_level === 'none' || p.caffeine_level === 'low');
+    return { text: "Perfect for slowing down 🌙", items: items.slice(0, 4), chips: backChips() };
+  }
+
+  if (lm === 'deals' || lm.match(/\b(deal|combo|promo|offer|discount)\b/)) {
+    return {
+      text: "Today's offers ✦",
+      promos: [
+        { title: 'Morning Combo', desc: 'Café Crème + Croissant au Beurre — 5.90 TND (save 1 TND)', tag: 'Until 11:00', color: 'gold' },
+        { title: 'Student Discount', desc: 'Show your student card — 15% off any cold drink, every day.', tag: 'Ongoing', color: 'cyan' },
+        { title: 'Loyalty — 5th drink free', desc: 'Ask us to stamp your card. No app needed.', tag: 'Always', color: 'green' },
+      ],
+      chips: backChips(),
+    };
+  }
+
+  if (lm.match(/\b(thank|thanks|merci|شكرا)\b/))
+    return { text: "Pleasure is ours ✦ Enjoy every sip ☕", chips: [{ id: 'home', text: 'Back to menu', emoji: '🏠' }] };
+
+  /* fallback */
+  return {
+    text: "I can help you find the perfect order. Try one of these:",
+    chips: QUICK_CHIPS,
+  };
+}
+
+function catChips(products) {
+  const cats = [...new Set(products.map(p => p.category))];
+  return [
+    ...cats.map(c => ({ id: `cat_${c}`, text: (CAT_EMOJI[c] || '') + ' ' + c.charAt(0).toUpperCase() + c.slice(1), emoji: '' })),
+    { id: 'home', text: 'Main menu', emoji: '🏠' },
+  ];
+}
+function backChips() {
+  return [
+    { id: 'categories', text: 'Browse categories', emoji: '🏷️' },
+    { id: 'home',       text: 'Main menu',          emoji: '🏠' },
+  ];
+}
+function defaultChips() { return QUICK_CHIPS; }
+
+/* ════════════════════════════════════════════════════════════ */
+export default function ChatbotWaiter({ products }) {
+  const [open, setOpen]         = useState(false);
+  const [showWelcome, setWelcome] = useState(true);
+  const [messages, setMessages] = useState([{
+    id: '0', from: 'bot', ts: new Date(),
+    text: "Welcome ✦ I'm Alex, your personal guide to everything on our menu. What are you in the mood for?",
+    chips: QUICK_CHIPS,
+  }]);
+  const [input, setInput]   = useState('');
+  const [typing, setTyping] = useState(false);
+  const [hasNew, setHasNew] = useState(false);
+  const bodyRef             = useRef(null);
+  const inputRef            = useRef(null);
+
+  /* welcome splash */
   useEffect(() => {
-    const hasSeenWelcome = sessionStorage.getItem('hasSeenWelcome');
-    if (!hasSeenWelcome) {
-      const timer = setTimeout(() => {
-        setShowWelcome(false);
-        sessionStorage.setItem('hasSeenWelcome', 'true');
-      }, 3000);
-      return () => clearTimeout(timer);
-    } else {
-      setShowWelcome(false);
-    }
+    if (sessionStorage.getItem('coffai_alex_seen')) { setWelcome(false); return; }
+    const t = setTimeout(() => { setWelcome(false); sessionStorage.setItem('coffai_alex_seen', '1'); }, 3200);
+    return () => clearTimeout(t);
   }, []);
 
-
-
-useEffect(() => {
-  const chatContainer = document.querySelector('.chat-messages-container');
-
-  if (chatContainer) {
-    // Smooth scroll to bottom
-    chatContainer.scrollTo({ 
-      top: chatContainer.scrollHeight, 
-      behavior: 'smooth' 
-    });
-  }
-}, [messages]);
-
-
+  /* scroll to bottom */
   useEffect(() => {
-    if (!isOpen && messages.length > 1 && messages[messages.length - 1].sender === 'bot') {
-      setHasNewMessage(true);
-    }
-  }, [messages, isOpen]);
+    bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages, typing]);
 
-  const getCategoryIcon = (category) => {
-    const icons = {
-      coffee: <Coffee size={16} />,
-      food: <Utensils size={16} />,
-      drink: <Wine size={16} />,
-      dessert: <Cake size={16} />
-    };
-    return icons[category] || '📦';
+  /* new message badge */
+  useEffect(() => {
+    if (!open && messages.length > 1 && messages.at(-1).from === 'bot') setHasNew(true);
+  }, [messages, open]);
+
+  /* focus input on open */
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 300);
+  }, [open]);
+
+  const pushBot = useCallback((res) => {
+    setMessages(p => [...p, { id: Date.now() + '', from: 'bot', ts: new Date(), ...res }]);
+    setTyping(false);
+  }, []);
+
+  const send = useCallback((intentId, displayText) => {
+    setMessages(p => [...p, { id: Date.now() + 'u', from: 'user', ts: new Date(), text: displayText }]);
+    setTyping(true);
+    const delay = 650 + Math.random() * 350;
+    setTimeout(() => pushBot(getResponse(intentId, products)), delay);
+  }, [products, pushBot]);
+
+  const handleChip  = (chip) => send(chip.id, chip.text);
+  const handleSend  = () => {
+    const val = input.trim();
+    if (!val) return;
+    setInput('');
+    setMessages(p => [...p, { id: Date.now() + 'u', from: 'user', ts: new Date(), text: val }]);
+    setTyping(true);
+    setTimeout(() => pushBot(getResponse(val, products)), 750 + Math.random() * 350);
   };
 
-  const generateBotResponse = (userMessage, isOptionClick = false) => {
-    const lowerMessage = userMessage.toLowerCase();
-    let response = { text: '', options: [] };
-
-    // Greeting responses
-    if (lowerMessage.match(/\b(hi|hello|hey|greetings)\b/)) {
-      response.text = "Hello! 😊 Welcome to CoffAI! What would you like to explore?";
-      response.options = [
-        { id: 'menu', text: '📋 View Full Menu', icon: '📋' },
-        { id: 'recommend', text: '⭐ Get Recommendations', icon: '⭐' },
-        { id: 'categories', text: '🏷️ Browse Categories', icon: '🏷️' }
-      ];
-      return response;
-    }
-
-    // Menu browsing
-    if (lowerMessage.match(/\b(menu|browse|show|view)\b/) || userMessage === 'menu') {
-      response.text = "Here are our categories. What would you like to see?";
-      const categories = [...new Set(products.map(p => p.category))];
-      response.options = categories.map(cat => ({
-        id: `cat_${cat}`,
-        text: `${cat.charAt(0).toUpperCase() + cat.slice(1)}`,
-        icon: cat === 'coffee' ? '☕' : cat === 'food' ? '🍽️' : cat === 'drink' ? '🥤' : cat === 'dessert' ? '🍰' : '🎮'
-      }));
-      response.options.push({ id: 'back', text: '← Back to Main Menu', icon: '🏠' });
-      return response;
-    }
-
-    // Categories browsing
-    if (lowerMessage === 'categories' || userMessage === 'categories') {
-      response.text = "Select a category to explore:";
-      const categories = [...new Set(products.map(p => p.category))];
-      response.options = categories.map(cat => ({
-        id: `cat_${cat}`,
-        text: `${cat.charAt(0).toUpperCase() + cat.slice(1)}`,
-        icon: cat === 'coffee' ? '☕' : cat === 'food' ? '🍽️' : cat === 'drink' ? '🥤' : cat === 'dessert' ? '🍰' : '🎮'
-      }));
-      return response;
-    }
-
-    // Category-specific views
-    if (lowerMessage.startsWith('cat_')) {
-      const category = lowerMessage.replace('cat_', '');
-      const categoryProducts = products.filter(p => p.category === category && p.stock > 0);
-      
-      if (categoryProducts.length > 0) {
-        response.text = `Here are our ${category} items. Click to add to cart:`;
-        response.options = categoryProducts.slice(0, 6).map(p => ({
-          id: `add_${p.id}`,
-          text: `${p.name} - ${p.price.toFixed(2)} TnD`,
-          icon: '➕',
-          product: p
-        }));
-        if (categoryProducts.length > 6) {
-          response.options.push({ 
-            id: 'more', 
-            text: `See ${categoryProducts.length - 6} more items...`, 
-            icon: '👀' 
-          });
-        }
-        response.options.push({ id: 'categories', text: '← Back to Categories', icon: '🏷️' });
-        return response;
-      } else {
-        response.text = `Sorry, no ${category} items available right now. Try another category?`;
-        response.options = [{ id: 'categories', text: 'Browse Categories', icon: '🏷️' }];
-        return response;
-      }
-    }
-
-    // Add to cart action
-    if (lowerMessage.startsWith('add_')) {
-      const productId = parseInt(lowerMessage.replace('add_', ''));
-      const product = products.find(p => p.id === productId);
-      if (product) {
-        onAddToCart(product);
-        response.text = `✅ ${product.name} added to cart! (${product.price.toFixed(2)} TnD)\n\nWhat would you like to do next?`;
-        response.options = [
-          { id: `cat_${product.category}`, text: `More ${product.category}`, icon: '🔄' },
-          { id: 'categories', text: 'Browse Categories', icon: '🏷️' },
-          { id: 'checkout', text: 'View Cart & Checkout', icon: '🛒' }
-        ];
-        return response;
-      }
-    }
-
-    // Recommendations
-    if (lowerMessage.match(/\b(recommend|suggestion|popular|best)\b/) || userMessage === 'recommend' || userMessage === 'popular') {
-      const topItems = products
-        .filter(p => p.stock > 0)
-        .sort(() => 0.5 - Math.random())
-        .slice(0, 5);
-      
-      response.text = "Here are some popular items you might enjoy:";
-      response.options = topItems.map(p => ({
-        id: `add_${p.id}`,
-        text: `${p.name} - ${p.price.toFixed(2)} TnD`,
-        icon: '⭐',
-        product: p
-      }));
-      response.options.push({ id: 'menu', text: 'See Full Menu', icon: '📋' });
-      return response;
-    }
-
-    // Order help
-    if (lowerMessage.match(/\b(order|checkout|cart|buy)\b/) || userMessage === 'order' || userMessage === 'checkout') {
-      response.text = "To place an order:\n\n1️⃣ Browse items and click \n'+ Add'\n2️⃣ Click the 🛒 cart icon (bottom right)\n3️⃣ Review and place your order\n\nNeed help finding something?";
-      response.options = [
-        { id: 'menu', text: 'Browse Menu', icon: '📋' },
-        { id: 'recommend', text: 'Get Recommendations', icon: '⭐' },
-        { id: 'categories', text: 'View Categories', icon: '🏷️' }
-      ];
-      return response;
-    }
-
-    // Price queries
-    if (lowerMessage.match(/\b(price|cost|how much|expensive|cheap)\b/)) {
-      const prices = products.filter(p => p.stock > 0).map(p => p.price);
-      const minPrice = Math.min(...prices);
-      const maxPrice = Math.max(...prices);
-      response.text = `Our items range from ${minPrice.toFixed(2)} TnD to ${maxPrice.toFixed(2)} TnD.`;
-      response.options = [
-        { id: 'menu', text: 'View Full Menu', icon: '📋' },
-        { id: 'recommend', text: 'Get Recommendations', icon: '⭐' }
-      ];
-      return response;
-    }
-
-    // Stock/availability
-    if (lowerMessage.match(/\b(available|stock|in stock)\b/)) {
-      const inStock = products.filter(p => p.stock > 0).length;
-      const outOfStock = products.filter(p => !p.stock).length;
-      response.text = `We have ${inStock} items available right now! ${outOfStock > 0 ? `${outOfStock} items are temporarily out of stock.` : ''}`;
-      response.options = [
-        { id: 'menu', text: 'Browse Available Items', icon: '📋' },
-        { id: 'categories', text: 'View by Category', icon: '🏷️' }
-      ];
-      return response;
-    }
-
-    // Thank you
-    if (lowerMessage.match(/\b(thank|thanks)\b/)) {
-      response.text = "You're welcome! 😊 Anything else I can help with?";
-      response.options = [
-        { id: 'menu', text: 'Browse Menu', icon: '📋' },
-        { id: 'recommend', text: 'Recommendations', icon: '⭐' }
-      ];
-      return response;
-    }
-
-    // Goodbye
-    if (lowerMessage.match(/\b(bye|goodbye)\b/)) {
-      response.text = "Enjoy your meal ! 👋 Feel free to chat anytime!";
-      return response;
-    }
-
-    // Back to main
-    if (userMessage === 'back') {
-      response.text = "What can I help you with?";
-      response.options = [
-        { id: 'menu', text: '📋 Browse Menu', icon: '📋' },
-        { id: 'recommend', text: '⭐ Recommendations', icon: '⭐' },
-        { id: 'popular', text: '🔥 Popular Items', icon: '🔥' },
-        { id: 'order', text: '🛒 How to Order', icon: '🛒' }
-      ];
-      return response;
-    }
-
-    // Default response
-    response.text = "I can help you with:\n\n• Browse our menu\n• Get recommendations\n• Add items to cart\n• Learn how to order\n\nWhat interests you?";
-    response.options = [
-      { id: 'menu', text: 'Browse Menu', icon: '📋' },
-      { id: 'recommend', text: 'Recommendations', icon: '⭐' },
-      { id: 'order', text: 'How to Order', icon: '🛒' }
-    ];
-    
-    return response;
-  };
-
-  const handleOptionClick = (optionId) => {
-    // Add user's choice as a message
-    const option = messages[messages.length - 1].options?.find(opt => opt.id === optionId);
-    if (option) {
-      const userMessage = {
-        id: Date.now().toString(),
-        text: option.text,
-        sender: 'user',
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, userMessage]);
-    }
-
-    setIsTyping(true);
-
-    setTimeout(() => {
-      const botResponse = generateBotResponse(optionId, true);
-      const botMessage = {
-        id: (Date.now() + 1).toString(),
-        text: botResponse.text,
-        sender: 'bot',
-        timestamp: new Date(),
-        options: botResponse.options
-      };
-      setMessages(prev => [...prev, botMessage]);
-      setIsTyping(false);
-    }, 800);
-  };
-
-  const handleSendMessage = () => {
-    if (!inputValue.trim()) return;
-
-    const userMessage = {
-      id: Date.now().toString(),
-      text: inputValue,
-      sender: 'user',
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setIsTyping(true);
-
-    setTimeout(() => {
-      const botResponse = generateBotResponse(inputValue);
-      const botMessage = {
-        id: (Date.now() + 1).toString(),
-        text: botResponse.text,
-        sender: 'bot',
-        timestamp: new Date(),
-        options: botResponse.options
-      };
-      setMessages(prev => [...prev, botMessage]);
-      setIsTyping(false);
-    }, 1000 + Math.random() * 500);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  const toggleChat = () => {
-    setIsOpen(!isOpen);
-    if (!isOpen) {
-      setHasNewMessage(false);
-    }
-  };
+  const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
   return (
     <>
-      {/* Fullscreen Welcome Animation */}
-      <AnimatePresence>
-        {showWelcome && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
-            className="fixed inset-0 z-[100] bg-gradient-to-br from-purple-900/95 via-pink-900/95 to-slate-900/95 backdrop-blur-xl flex items-center justify-center p-4"
-          >
-            <div className="text-center">
-              {/* Waiter Avatar with Glow Effect */}
-              <motion.div
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ 
-                  scale: 1, 
-                  rotate: 0,
-                }}
-                transition={{ 
-                  type: "spring",
-                  stiffness: 200,
-                  damping: 20,
-                  duration: 0.8 
-                }}
-                className="mx-auto mb-8 relative"
-              >
-                <motion.div
-                  animate={{ 
-                    scale: [1, 1.05, 1],
-                    boxShadow: [
-                      "0 0 40px rgba(168, 85, 247, 0.6)",
-                      "0 0 80px rgba(236, 72, 153, 0.9)",
-                      "0 0 40px rgba(168, 85, 247, 0.6)"
-                    ]
-                  }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="w-40 h-40 sm:w-52 sm:h-52 bg-gradient-to-br from-purple-600 via-pink-600 to-purple-600 rounded-full flex items-center justify-center shadow-2xl border-4 border-white/30"
-                >
-                  <Bot size={80} className="sm:w-28 sm:h-28 text-white" />
-                </motion.div>
+      <style>{CSS}</style>
 
-                {/* Sparkles around avatar */}
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0"
-                >
-                  <Sparkles className="absolute -top-4 left-1/2 w-8 h-8 text-yellow-300" />
-                  <Sparkles className="absolute top-1/2 -right-4 w-7 h-7 text-pink-300" />
-                  <Sparkles className="absolute -bottom-4 left-1/4 w-6 h-6 text-purple-300" />
-                  <Sparkles className="absolute top-1/4 -left-4 w-7 h-7 text-cyan-300" />
-                </motion.div>
-              </motion.div>
-
-              {/* Welcome Text */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5, duration: 0.6 }}
-                className="space-y-4"
-              >
-                <motion.h1
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.7, duration: 0.5 }}
-                  className="text-4xl sm:text-6xl font-bold text-white"
-                >
-                  Hi! I'm Alex 👋
-                </motion.h1>
-                
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.9, duration: 0.5 }}
-                  className="text-xl sm:text-2xl text-purple-200 font-medium"
-                >
-                  Your AI Waiter
-                </motion.p>
-                
-                <motion.p
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 1.1, duration: 0.5 }}
-                  className="text-lg sm:text-xl text-white/80 max-w-md mx-auto"
-                >
-                  Ready to help you browse our menu and place orders! 🎉
-                </motion.p>
-
-                {/* Animated dots */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.5 }}
-                  className="flex gap-2 mt-8 justify-center"
-                >
-                  <motion.div
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0 }}
-                    className="w-3 h-3 bg-purple-400 rounded-full"
-                  />
-                  <motion.div
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0.2 }}
-                    className="w-3 h-3 bg-pink-400 rounded-full"
-                  />
-                  <motion.div
-                    animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 1, repeat: Infinity, delay: 0.4 }}
-                    className="w-3 h-3 bg-purple-400 rounded-full"
-                  />
-                </motion.div>
-              </motion.div>
+      {/* ── welcome splash ─────────────────────────────────────── */}
+      {showWelcome && (
+        <div className="cw-welcome">
+          <div className="cw-welcome-orb cw-wo1" />
+          <div className="cw-welcome-orb cw-wo2" />
+          <div className="cw-welcome-card">
+            <div className="cw-welcome-ring">
+              <img src="/images/coffai1.png" alt="CoffAI" className="cw-welcome-logo" />
+              <div className="cw-ring-spin" />
+              <div className="cw-ring-spin cw-ring-spin2" />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Floating Chat Button */}
-      <motion.button
-        onClick={toggleChat}
-        className="fixed bottom-44 sm:bottom-48 right-6 sm:right-8 w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full shadow-2xl hover:shadow-purple-500/50 transition-all flex items-center justify-center z-50 group"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.95 }}
-        animate={hasNewMessage ? { 
-          scale: [1, 1.1, 1],
-          boxShadow: [
-            "0 20px 25px -5px rgba(168, 85, 247, 0.4)",
-            "0 20px 25px -5px rgba(236, 72, 153, 0.6)",
-            "0 20px 25px -5px rgba(168, 85, 247, 0.4)"
-          ]
-        } : {}}
-        transition={{ duration: 0.5, repeat: hasNewMessage ? Infinity : 0 }}
-      >
-        <div className="relative">
-          {isOpen ? (
-            <X size={24} className="sm:w-7 sm:h-7" />
-          ) : (
-            <>
-              <MessageCircle size={24} className="sm:w-7 sm:h-7" />
-              {hasNewMessage && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold"
-                >
-                  !
-                </motion.span>
-              )}
-            </>
-          )}
+            <h2 className="cw-welcome-h">Hi, I'm Alex</h2>
+            <p className="cw-welcome-p">Your personal guide to our menu — ask me anything about what we serve.</p>
+            <div className="cw-welcome-dots">
+              {[0, 0.2, 0.4].map((d, i) => <span key={i} className="cw-wd" style={{ animationDelay: `${d}s` }} />)}
+            </div>
+          </div>
         </div>
-        <Sparkles className="absolute -top-1 -right-1 w-4 h-4 text-yellow-300 opacity-0 group-hover:opacity-100 transition-opacity" />
-      </motion.button>
+      )}
 
-      {/* Chat Window */}
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 100, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 100, scale: 0.8 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed inset-x-4 bottom-64 sm:bottom-72 sm:right-8 sm:left-auto top-4 sm:top-auto sm:w-96 bg-slate-800/95 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden"
-          >
-            {/* Header */}
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4 flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <Bot size={24} className="text-white" />
+      {/* ── FAB ────────────────────────────────────────────────── */}
+      <button
+        className={`cw-fab${hasNew ? ' cw-fab-new' : ''}`}
+        onClick={() => { setOpen(v => !v); setHasNew(false); }}
+        aria-label="Chat with Alex"
+      >
+        <div className="cw-fab-bg" />
+        {open
+          ? <X size={20} style={{ position: 'relative', zIndex: 1 }} />
+          : <MessageCircle size={20} style={{ position: 'relative', zIndex: 1 }} />}
+        {!open && hasNew && <span className="cw-notif" />}
+      </button>
+
+      {/* ── chat window ────────────────────────────────────────── */}
+      {open && (
+        <div className="cw-win">
+
+          {/* header */}
+          <div className="cw-head">
+            <div className="cw-head-glow" />
+            <div className="cw-head-av">
+              <img src="/images/coffai1.png" alt="" className="cw-head-logo" onError={e => { e.target.style.display='none'; }} />
+              <Bot size={18} color="#e8b86d" className="cw-head-bot-icon" />
+            </div>
+            <div className="cw-head-info">
+              <span className="cw-head-name">Alex</span>
+              <span className="cw-head-sub">
+                <span className="cw-live-dot" />
+                Menu Guide · Online
+              </span>
+            </div>
+            <button className="cw-head-close" onClick={() => setOpen(false)}>
+              <X size={15} />
+            </button>
+          </div>
+
+          {/* body */}
+          <div className="cw-body" ref={bodyRef}>
+            {messages.map((msg, mi) => (
+              <div
+                key={msg.id}
+                className={`cw-row${msg.from === 'user' ? ' cw-row-u' : ''}`}
+                style={{ animationDelay: `${Math.min(mi * 0.03, 0.25)}s` }}
+              >
+                {msg.from === 'bot' && (
+                  <div className="cw-av-bot">
+                    <Bot size={14} color="#e8b86d" />
+                  </div>
+                )}
+
+                <div className="cw-msg-col">
+                  {/* text bubble */}
+                  <div className={`cw-bubble cw-bubble-${msg.from}`}>
+                    <p className="cw-bubble-text">{msg.text}</p>
+                  </div>
+
+                  {/* product cards */}
+                  {msg.items?.length > 0 && (
+                    <div className="cw-items">
+                      {msg.items.map(p => (
+                        <div key={p.id} className={`cw-item${!p.stock ? ' cw-item-oos' : ''}`}>
+                          <div className="cw-item-img-wrap">
+                            <img className="cw-item-img" src={p.imageUrl} alt={p.name} />
+                            {!p.stock && <div className="cw-item-oos-veil"><span>Sold out</span></div>}
+                          </div>
+                          <div className="cw-item-body">
+                            <span className="cw-item-name">{p.name}</span>
+                            {p.description && <span className="cw-item-desc">{p.description}</span>}
+                            <div className="cw-item-foot">
+                              <span className="cw-item-price">{p.price.toFixed(2)}<small> TND</small></span>
+                              {p.is_bestseller && <span className="cw-item-badge cw-item-badge-hot">🔥 Popular</span>}
+                              {p.hidden_gem && <span className="cw-item-badge cw-item-badge-gem">✦ Hidden gem</span>}
+                            </div>
+                            {p.flavor_tags?.length > 0 && (
+                              <div className="cw-item-tags">
+                                {p.flavor_tags.map(t => <span key={t} className="cw-ftag">{t}</span>)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* promo cards */}
+                  {msg.promos?.length > 0 && (
+                    <div className="cw-promos">
+                      {msg.promos.map((pr, pi) => (
+                        <div key={pi} className={`cw-promo cw-promo-${pr.color}`}>
+                          <div className="cw-promo-title">{pr.title}</div>
+                          <div className="cw-promo-desc">{pr.desc}</div>
+                          <div className="cw-promo-tag">{pr.tag}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* quick-reply chips */}
+                  {msg.from === 'bot' && msg.chips?.length > 0 && (
+                    <div className="cw-chips">
+                      {msg.chips.map(chip => (
+                        <button key={chip.id} className="cw-chip" onClick={() => handleChip(chip)}>
+                          {chip.emoji && <span className="cw-chip-em">{chip.emoji}</span>}
+                          <span>{chip.text}</span>
+                          <ChevronRight size={11} className="cw-chip-arr" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <span className={`cw-ts${msg.from === 'user' ? ' cw-ts-r' : ''}`}>{fmt(msg.ts)}</span>
+                </div>
+
+                {msg.from === 'user' && (
+                  <div className="cw-av-user">
+                    <User size={13} color="#1bcbe0" />
+                  </div>
+                )}
               </div>
-              <div className="flex-1">
-                <h3 className="text-white font-bold text-lg">Alex - AI Waiter</h3>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-white/80 text-xs">Online & Ready</span>
+            ))}
+
+            {/* typing indicator */}
+            {typing && (
+              <div className="cw-row">
+                <div className="cw-av-bot"><Bot size={14} color="#e8b86d" /></div>
+                <div className="cw-bubble cw-bubble-bot">
+                  <div className="cw-typing">
+                    {[0, 0.18, 0.36].map((d, i) => <span key={i} className="cw-td" style={{ animationDelay: `${d}s` }} />)}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* Messages */}
- <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/50 chat-messages-container">
-              {messages.map((message, index) => (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`flex gap-2 max-w-[85%] ${message.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      message.sender === 'user' 
-                        ? 'bg-blue-600' 
-                        : 'bg-gradient-to-r from-purple-600 to-pink-600'
-                    }`}>
-                      {message.sender === 'user' ? (
-                        <User size={18} className="text-white" />
-                      ) : (
-                        <Bot size={18} className="text-white" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className={`rounded-2xl p-3 ${
-                        message.sender === 'user'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-700 text-white'
-                      }`}>
-                        <p className="text-sm leading-relaxed whitespace-pre-line">{message.text}</p>
-                      </div>
-                      
-                      {/* Interactive Options */}
-                      {message.sender === 'bot' && message.options && message.options.length > 0 && (
-                        <div className="mt-2 space-y-2">
-                          {message.options.map((option) => (
-                            <motion.button
-                              key={option.id}
-                              onClick={() => handleOptionClick(option.id)}
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
-                              className="w-full bg-slate-600/80 hover:bg-slate-600 text-white text-sm py-2.5 px-3 rounded-xl flex items-center gap-2 transition-all border border-slate-500/30 hover:border-purple-500/50"
-                            >
-                              <span className="text-base">{option.icon}</span>
-                              <span className="flex-1 text-left">{option.text}</span>
-                            </motion.button>
-                          ))}
-                        </div>
-                      )}
-                      
-                      <p className="text-xs text-slate-500 mt-1 px-2">
-                        {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+          {/* input bar */}
+          <div className="cw-input-row">
+            <div className="cw-input-glow" />
+            <input
+              ref={inputRef}
+              className="cw-input"
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+              placeholder="Ask anything about our menu…"
+            />
+            <button className="cw-send" onClick={handleSend} disabled={!input.trim()}>
+              <div className="cw-send-bg" />
+              <Send size={15} style={{ position: 'relative', zIndex: 1 }} />
+            </button>
+          </div>
 
-              {/* Typing Indicator */}
-              {isTyping && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex justify-start"
-                >
-                  <div className="flex gap-2 items-end">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center">
-                      <Bot size={18} className="text-white" />
-                    </div>
-                    <div className="bg-slate-700 rounded-2xl p-3">
-                      <div className="flex gap-1">
-                        <motion.div
-                          animate={{ y: [0, -5, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0 }}
-                          className="w-2 h-2 bg-slate-400 rounded-full"
-                        />
-                        <motion.div
-                          animate={{ y: [0, -5, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0.2 }}
-                          className="w-2 h-2 bg-slate-400 rounded-full"
-                        />
-                        <motion.div
-                          animate={{ y: [0, -5, 0] }}
-                          transition={{ duration: 0.6, repeat: Infinity, delay: 0.4 }}
-                          className="w-2 h-2 bg-slate-400 rounded-full"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input */}
-            <div className="p-4 bg-slate-800/80 border-t border-slate-700/50">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Ask me anything..."
-                  className="flex-1 bg-slate-900/50 border border-slate-700 text-white placeholder-slate-400 rounded-xl px-4 py-2.5 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-sm"
-                />
-                <motion.button
-                  onClick={handleSendMessage}
-                  disabled={!inputValue.trim()}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-2.5 rounded-xl hover:shadow-lg hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <Send size={20} />
-                </motion.button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </>
   );
 }
+
+/* ─── CSS ─────────────────────────────────────────────────── */
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+/* ── CSS tokens matching UserOrderPage ── */
+.cw-win,
+.cw-welcome {
+  --bg:   #07101e;
+  --bg2:  #0b1625;
+  --bg3:  #0e1d30;
+  --sur:  rgba(255,255,255,.04);
+  --sur2: rgba(255,255,255,.08);
+  --brd:  rgba(255,255,255,.07);
+  --brd2: rgba(255,255,255,.13);
+  --cyan: #1bcbe0;
+  --cyan2:#1a6dd4;
+  --gold: #e8b86d;
+  --gold2:#c9933a;
+  --green:#34d399;
+  --red:  #f87171;
+  --t:    #ede7d6;
+  --t2:   #7a9ab8;
+  --t3:   #2b4460;
+  --serif:'DM Serif Display', Georgia, serif;
+  --sans: 'DM Sans', system-ui, sans-serif;
+  --ease: cubic-bezier(.16,1,.3,1);
+  --r:    14px;
+}
+
+/* ══ WELCOME SPLASH ══════════════════════════════════════════ */
+.cw-welcome {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(7,16,30,.96);
+  backdrop-filter:blur(20px);
+  display:flex; align-items:center; justify-content:center; padding:28px;
+  animation:cw-fadein .4s ease;
+  overflow:hidden;
+  font-family:var(--sans);
+}
+.cw-welcome-orb {
+  position:absolute; border-radius:50%; filter:blur(110px); pointer-events:none;
+}
+.cw-wo1 { width:500px;height:500px;background:var(--cyan);opacity:.055;top:-160px;right:-100px; }
+.cw-wo2 { width:440px;height:440px;background:var(--gold);opacity:.04;bottom:-120px;left:-80px; }
+
+.cw-welcome-card { position:relative;z-index:1;text-align:center;max-width:300px; }
+.cw-welcome-ring {
+  width:112px;height:112px;border-radius:50%;margin:0 auto 26px;
+  background:rgba(232,184,109,.07);
+  border:1px solid rgba(232,184,109,.18);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;
+}
+.cw-welcome-logo { width:56px;height:56px;object-fit:contain;position:relative;z-index:2; }
+.cw-ring-spin {
+  position:absolute; inset:-14px; border-radius:50%;
+  border:1px dashed rgba(232,184,109,.22);
+  animation:cw-spin 14s linear infinite;
+}
+.cw-ring-spin2 {
+  inset:-24px;
+  border-color:rgba(27,203,224,.12);
+  animation-duration:22s; animation-direction:reverse;
+}
+@keyframes cw-spin { to { transform:rotate(360deg); } }
+@keyframes cw-fadein { from{opacity:0} to{opacity:1} }
+@keyframes cw-bouncein {
+  0%{transform:scale(.3);opacity:0}
+  70%{transform:scale(1.06)}
+  100%{transform:scale(1);opacity:1}
+}
+@keyframes cw-win-in {
+  from{opacity:0;transform:translateY(18px) scale(.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@keyframes cw-row-in {
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes cw-dot {
+  0%,100%{transform:translateY(0);opacity:.4}
+  50%{transform:translateY(-5px);opacity:1}
+}
+@keyframes cw-pulse {
+  0%{box-shadow:0 6px 24px rgba(232,184,109,.28),0 0 0 0 rgba(232,184,109,.4)}
+  70%{box-shadow:0 6px 24px rgba(232,184,109,.28),0 0 0 13px rgba(232,184,109,0)}
+  100%{box-shadow:0 6px 24px rgba(232,184,109,.28),0 0 0 0 rgba(232,184,109,0)}
+}
+@keyframes cw-live {
+  0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}
+  70%{box-shadow:0 0 0 7px rgba(52,211,153,0)}
+  100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}
+}
+@keyframes cw-notif {
+  0%{box-shadow:0 0 0 0 rgba(27,203,224,.5)}
+  70%{box-shadow:0 0 0 6px rgba(27,203,224,0)}
+  100%{box-shadow:0 0 0 0 rgba(27,203,224,0)}
+}
+
+.cw-welcome-h {
+  font-family:var(--serif);font-size:2.1rem;
+  color:var(--t);margin-bottom:10px;line-height:1.1;
+}
+.cw-welcome-p {
+  font-size:.87rem;color:var(--t2);line-height:1.75;margin-bottom:24px;
+}
+.cw-welcome-dots { display:flex;gap:7px;justify-content:center; }
+.cw-wd {
+  display:block;width:8px;height:8px;border-radius:50%;
+  background:var(--gold);
+  animation:cw-dot 1s ease-in-out infinite;
+}
+
+/* ══ FAB ═════════════════════════════════════════════════════ */
+.cw-fab {
+  position:fixed;bottom:22px;right:22px;z-index:55;
+  width:52px;height:52px;border-radius:50%;border:none;
+  color:#07101e;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .2s var(--ease);
+  overflow:hidden;
+}
+.cw-fab-bg {
+  position:absolute;inset:0;border-radius:50%;
+  background:linear-gradient(135deg,#e8b86d,#c9933a);
+  box-shadow:0 6px 24px rgba(232,184,109,.28);
+  transition:box-shadow .2s;
+}
+.cw-fab:hover { transform:scale(1.08); }
+.cw-fab:hover .cw-fab-bg { box-shadow:0 8px 32px rgba(232,184,109,.46); }
+.cw-fab:active { transform:scale(.96); }
+.cw-fab-new .cw-fab-bg { animation:cw-pulse 1.8s ease-out infinite; }
+.cw-notif {
+  position:absolute;top:-2px;right:-2px;
+  width:12px;height:12px;border-radius:50%;
+  background:var(--cyan);border:2px solid var(--bg);
+  animation:cw-notif 2.5s ease-out infinite;
+}
+
+/* ══ WINDOW ══════════════════════════════════════════════════ */
+.cw-win {
+  position:fixed;bottom:86px;right:14px;z-index:55;
+  width:calc(100vw - 28px);max-width:360px;
+  max-height:76svh;
+  background:var(--bg2);
+  border:1px solid var(--brd);
+  border-radius:22px;
+  display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 28px 70px rgba(0,0,0,.65),0 0 0 1px rgba(255,255,255,.04);
+  animation:cw-win-in .3s var(--ease);
+  font-family:var(--sans);
+}
+@media(min-width:480px){.cw-win{right:22px;}}
+
+/* ══ HEADER ══════════════════════════════════════════════════ */
+.cw-head {
+  display:flex;align-items:center;gap:10px;padding:12px 14px;
+  border-bottom:1px solid var(--brd);
+  background:rgba(232,184,109,.04);
+  flex-shrink:0;position:relative;overflow:hidden;
+}
+.cw-head-glow {
+  position:absolute;top:-30px;left:50%;transform:translateX(-50%);
+  width:180px;height:60px;
+  background:radial-gradient(ellipse,rgba(232,184,109,.12) 0%,transparent 70%);
+  pointer-events:none;
+}
+.cw-head-av {
+  width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:rgba(232,184,109,.08);
+  border:1px solid rgba(232,184,109,.2);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;
+}
+.cw-head-logo {
+  width:28px;height:28px;object-fit:contain;position:relative;z-index:1;
+}
+.cw-head-bot-icon { display:none; }
+.cw-head-logo[style*="none"] + .cw-head-bot-icon { display:flex; }
+
+.cw-head-name {
+  display:block;
+  font-family:var(--serif);font-size:.98rem;
+  background:linear-gradient(135deg,var(--gold) 0%,#f5d99a 50%,var(--gold2) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1;
+}
+.cw-head-sub {
+  display:flex;align-items:center;gap:5px;
+  font-size:.59rem;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-top:3px;
+}
+.cw-live-dot {
+  display:block;width:5px;height:5px;border-radius:50%;
+  background:var(--green);animation:cw-live 2.5s ease-out infinite;
+}
+.cw-head-close {
+  width:27px;height:27px;border-radius:9px;margin-left:auto;
+  background:var(--sur);border:1px solid var(--brd);
+  color:var(--t3);display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:all .15s;
+}
+.cw-head-close:hover { background:var(--sur2);color:var(--t2); }
+
+/* ══ BODY ════════════════════════════════════════════════════ */
+.cw-body {
+  flex:1;overflow-y:auto;padding:14px 12px;
+  display:flex;flex-direction:column;gap:12px;
+  scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.05) transparent;
+}
+.cw-body::-webkit-scrollbar { width:3px; }
+.cw-body::-webkit-scrollbar-track { background:transparent; }
+.cw-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,.06);border-radius:2px; }
+
+/* ══ ROWS ════════════════════════════════════════════════════ */
+.cw-row {
+  display:flex;align-items:flex-end;gap:8px;
+  animation:cw-row-in .32s var(--ease) both;
+}
+.cw-row-u { flex-direction:row-reverse; }
+.cw-msg-col { flex:1;max-width:90%;display:flex;flex-direction:column;gap:6px; }
+
+.cw-av-bot {
+  width:27px;height:27px;border-radius:50%;flex-shrink:0;
+  background:rgba(232,184,109,.08);border:1px solid rgba(232,184,109,.18);
+  display:flex;align-items:center;justify-content:center;
+}
+.cw-av-user {
+  width:25px;height:25px;border-radius:50%;flex-shrink:0;
+  background:rgba(27,203,224,.1);border:1px solid rgba(27,203,224,.22);
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ══ BUBBLES ═════════════════════════════════════════════════ */
+.cw-bubble {
+  padding:10px 13px;border-radius:16px;
+}
+.cw-bubble-bot {
+  background:rgba(255,255,255,.05);
+  border:1px solid var(--brd);
+  color:var(--t2);
+  border-bottom-left-radius:4px;
+}
+.cw-bubble-user {
+  background:linear-gradient(135deg,rgba(27,203,224,.18),rgba(26,109,212,.14));
+  border:1px solid rgba(27,203,224,.2);
+  color:var(--t);
+  border-bottom-right-radius:4px;
+}
+.cw-bubble-text {
+  font-size:.82rem;line-height:1.65;margin:0;white-space:pre-line;
+}
+
+/* ══ TYPING ══════════════════════════════════════════════════ */
+.cw-typing { display:flex;align-items:center;gap:5px;padding:3px 2px; }
+.cw-td {
+  display:block;width:7px;height:7px;border-radius:50%;
+  background:var(--t3);
+  animation:cw-dot .65s ease-in-out infinite;
+}
+
+/* ══ PRODUCT CARDS ═══════════════════════════════════════════ */
+.cw-items { display:flex;flex-direction:column;gap:7px; }
+.cw-item {
+  display:flex;gap:10px;align-items:flex-start;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--brd);
+  border-radius:12px;overflow:hidden;
+  transition:border-color .2s;
+}
+.cw-item:hover { border-color:rgba(232,184,109,.2); }
+.cw-item-oos { opacity:.42; }
+
+.cw-item-img-wrap {
+  width:60px;height:60px;flex-shrink:0;position:relative;overflow:hidden;
+}
+.cw-item-img { width:100%;height:100%;object-fit:cover; }
+.cw-item-oos-veil {
+  position:absolute;inset:0;background:rgba(7,16,30,.7);
+  display:flex;align-items:center;justify-content:center;
+}
+.cw-item-oos-veil span {
+  font-size:.55rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--red);border:1px solid rgba(248,113,113,.3);
+  padding:2px 6px;border-radius:999px;
+}
+.cw-item-body {
+  flex:1;padding:8px 10px 8px 0;display:flex;flex-direction:column;gap:3px;min-width:0;
+}
+.cw-item-name {
+  font-size:.79rem;font-weight:500;color:var(--t);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.cw-item-desc {
+  font-size:.7rem;color:var(--t3);line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.cw-item-foot { display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px; }
+.cw-item-price {
+  font-family:var(--serif);font-size:.95rem;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.cw-item-price small {
+  font-family:var(--sans);font-size:.57rem;
+  -webkit-text-fill-color:var(--t3);color:var(--t3);
+}
+.cw-item-badge {
+  font-size:.58rem;padding:2px 7px;border-radius:999px;font-weight:600;
+  letter-spacing:.04em;
+}
+.cw-item-badge-hot {
+  background:rgba(232,184,109,.1);color:var(--gold);
+  border:1px solid rgba(232,184,109,.2);
+}
+.cw-item-badge-gem {
+  background:rgba(27,203,224,.08);color:var(--cyan);
+  border:1px solid rgba(27,203,224,.2);
+}
+.cw-item-tags { display:flex;gap:4px;flex-wrap:wrap; }
+.cw-ftag {
+  font-size:.59rem;padding:2px 6px;border-radius:999px;
+  background:rgba(255,255,255,.05);color:var(--t3);
+  border:1px solid var(--brd);
+}
+
+/* ══ PROMO CARDS ═════════════════════════════════════════════ */
+.cw-promos { display:flex;flex-direction:column;gap:6px; }
+.cw-promo {
+  border-radius:12px;padding:10px 12px;
+  border:1px solid transparent;
+}
+.cw-promo-gold {
+  background:rgba(232,184,109,.07);border-color:rgba(232,184,109,.18);
+}
+.cw-promo-cyan {
+  background:rgba(27,203,224,.06);border-color:rgba(27,203,224,.18);
+}
+.cw-promo-green {
+  background:rgba(52,211,153,.06);border-color:rgba(52,211,153,.18);
+}
+.cw-promo-title {
+  font-size:.78rem;font-weight:600;color:var(--t);margin-bottom:3px;
+}
+.cw-promo-desc {
+  font-size:.71rem;color:var(--t2);line-height:1.5;
+}
+.cw-promo-tag {
+  font-size:.58rem;color:var(--t3);margin-top:5px;
+  letter-spacing:.06em;text-transform:uppercase;
+}
+
+/* ══ CHIPS ═══════════════════════════════════════════════════ */
+.cw-chips { display:flex;flex-direction:column;gap:5px; }
+.cw-chip {
+  display:flex;align-items:center;gap:7px;padding:8px 11px;
+  border-radius:10px;border:1px solid var(--brd);
+  background:rgba(255,255,255,.035);
+  color:var(--t2);font-size:.77rem;font-family:var(--sans);
+  text-align:left;width:100%;
+  transition:all .18s var(--ease);
+}
+.cw-chip:hover {
+  background:rgba(232,184,109,.07);
+  border-color:rgba(232,184,109,.24);
+  color:var(--gold);
+  transform:translateX(3px);
+}
+.cw-chip:active { transform:translateX(1px); }
+.cw-chip-em { font-size:.85rem;flex-shrink:0; }
+.cw-chip-arr {
+  margin-left:auto;flex-shrink:0;color:var(--t3);
+  transition:transform .18s var(--ease),color .18s;
+}
+.cw-chip:hover .cw-chip-arr { transform:translateX(2px);color:var(--gold); }
+
+/* ══ TIMESTAMP ═══════════════════════════════════════════════ */
+.cw-ts { font-size:.57rem;color:var(--t3);padding:0 3px; }
+.cw-ts-r { text-align:right; }
+
+/* ══ INPUT BAR ═══════════════════════════════════════════════ */
+.cw-input-row {
+  display:flex;align-items:center;gap:8px;padding:10px 12px;
+  border-top:1px solid var(--brd);
+  background:rgba(7,16,30,.85);
+  flex-shrink:0;position:relative;
+}
+.cw-input-glow {
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:200px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(232,184,109,.18),transparent);
+  pointer-events:none;
+}
+.cw-input {
+  flex:1;padding:9px 13px;border-radius:12px;
+  border:1px solid var(--brd);background:var(--sur);
+  color:var(--t);font-family:var(--sans);font-size:.82rem;outline:none;
+  transition:border-color .2s,box-shadow .2s,background .2s;
+}
+.cw-input::placeholder { color:var(--t3); }
+.cw-input:focus {
+  border-color:rgba(232,184,109,.3);
+  box-shadow:0 0 0 3px rgba(232,184,109,.05);
+  background:rgba(232,184,109,.02);
+}
+.cw-send {
+  width:36px;height:36px;border-radius:10px;border:none;
+  color:#07101e;
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;overflow:hidden;position:relative;
+  transition:transform .18s var(--ease);
+}
+.cw-send-bg {
+  position:absolute;inset:0;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));
+  transition:opacity .15s;
+}
+.cw-send:hover:not(:disabled) { transform:scale(1.07); }
+.cw-send:disabled .cw-send-bg { opacity:.28; }
+.cw-send:disabled { cursor:not-allowed; }
+`;

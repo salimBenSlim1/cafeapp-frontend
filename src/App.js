@@ -10,14 +10,12 @@ import LoginPage from './components/saas/LoginPage';
 import GetInfos from './components/getInfos/GetInfo';
 import QRCodesDashboard from './components/admin/QRCodesDashboard';
 import AdminCharts from './components/admin/AdminCharts';
-import AdminAgent from './components/admin/AdminAgent';
 import UserOrderPage from './components/user/UserOrderPage';
 import AdminLogin from './components/getInfos/LoginAdmin';
 import ManageWaiters from './components/admin/AdminMangeWaiter';
 import ServerLogin from './components/server/ServerLogin';
 import ServerDashboard from './components/server/ServerDash';
 import BarmanOrders from './components/server/Barman';
-import PrinterStation from './components/server/PrintingStation';
 // Create a custom theme
 const theme = createTheme({
   palette: {
@@ -61,15 +59,12 @@ function App() {
           <Route path="/admin/orders" element={<AdminOrders />} />
           <Route path="/admin/items" element={<AdminItems />} />
           <Route path="/admin/charts" element={<AdminCharts />} />
-          <Route path="/admin/agent" element={<AdminAgent />} />
           <Route path="/admin/waiters" element={<ManageWaiters />} />
-          {/* Add your customer-facing routes here */}
 
           <Route path="/client-panier" element={<UserOrderPage />} />
           <Route path="/server-login" element={<ServerLogin />} />
           <Route path="/server-dashboard" element={<ServerDashboard />} />
           <Route path="/barman" element={<BarmanOrders />} />
-          <Route path="/printing-station" element={<PrinterStation />} />
           
         </Routes>
       </Router>

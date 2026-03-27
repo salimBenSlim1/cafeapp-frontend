@@ -17,23 +17,24 @@ const GetInfos = () => {
     const [currentPage, setCurrentPage] = useState(1)
     const [itemsPerPage] = useState(10)
     const [editingDate, setEditingDate] = useState(null)
-    const [updatingPayment, setUpdatingPayment] = useState(null)
     const [deletingId, setDeletingId] = useState(null)
     const [expandedCafe, setExpandedCafe] = useState(null)
-    const [addingPaymentFor, setAddingPaymentFor] = useState(null)
-    const [newPayment, setNewPayment] = useState({ amount: '', method: 'cash', status: 'success' })
     const navigate = useNavigate()
     const [refresh,setRefresh]=useState(false)
     useEffect(() => {
         fetchPendingForms()
-        fetchCafes()
     }, [refresh])
 
     const fetchPendingForms = () => {
-        axios.get(`${process.env.REACT_APP_API_URL}/getForms`,{headers:{'token-jwt':localStorage.getItem('adminToken')}})
-            .then(r => {
-                setPendingData(r.data)
+        Promise.all([
+axios.get(`${process.env.REACT_APP_API_URL}/getForms`,{headers:{'token-jwt':localStorage.getItem('adminToken')}}),
+axios.get(`${process.env.REACT_APP_API_URL}/getCoffee`,{headers:{'token-jwt':localStorage.getItem('adminToken')}}),
+        ])
+        
+            .then(([r,t]) => {
+                setPendingData(r.data.data)
                 setLoading(false)
+                setCafesData(t.data.data)
             })
             .catch(err => {
                 console.error(err)
@@ -46,17 +47,7 @@ const GetInfos = () => {
             })
     }
 
-    const fetchCafes = () => {
-        axios.get(process.env.REACT_APP_API_URL+'/getPayements',{headers:{'token-jwt':localStorage.getItem('adminToken')}})
-            .then(r => {
-                setCafesData(r.data)
-            })
-            .catch(err => {
-                if(err?.response?.data?.redirectTo){
-                    navigate('/login/admin')
-                }
-            })
-    }
+   
 
     const handleCreateCafe = (e, index) => {
         setCreatingId(index)
@@ -69,7 +60,6 @@ const GetInfos = () => {
                 setSuccessMessage(`Café "${e.nomCafe}" créé avec succès!`)
                 setCreatingId(null)
                 fetchPendingForms()
-                fetchCafes()
                 setTimeout(() => setSuccessMessage(null), 5000)
             })
             .catch(err => {
@@ -88,39 +78,12 @@ const GetInfos = () => {
         axios.delete(`${process.env.REACT_APP_API_URL}/deleteCafe/${cafeId}`,{headers:{'token-jwt':localStorage.getItem('adminToken')}})
             .then(() => {
                 setSuccessMessage('Café supprimé avec succès')
-                fetchCafes()
                 setDeletingId(null)
                 setTimeout(() => setSuccessMessage(null), 3000)
             })
             .catch(err => {
                 setError('Erreur lors de la suppression')
                 setDeletingId(null)
-                if(err?.response?.data?.redirectTo){
-                    navigate('/login/admin')
-                }
-            })
-    }
-
-    const handleUpdatePaymentVerified = (cafeId) => {
-        setUpdatingPayment(cafeId)
-        axios.put(
-            `${process.env.REACT_APP_API_URL}/updatePayment/${cafeId}`,
-            {}, // empty body
-            {
-                headers: {
-                    'token-jwt': localStorage.getItem('adminToken'),
-                },
-            }
-        )
-            .then(() => {
-                setSuccessMessage('Paiement vérifié avec succès')
-                fetchCafes()
-                setUpdatingPayment(null)
-                setTimeout(() => setSuccessMessage(null), 3000)
-            })
-            .catch(err => {
-                setError('Erreur lors de la mise à jour')
-                setUpdatingPayment(null)
                 if(err?.response?.data?.redirectTo){
                     navigate('/login/admin')
                 }
@@ -135,7 +98,6 @@ const GetInfos = () => {
         axios.put(`${process.env.REACT_APP_API_URL}/updateCreatedAt/${cafeId}`, { createdAt: newDate },{headers:{'token-jwt':localStorage.getItem('adminToken')}})
             .then(() => {
                 setSuccessMessage('Date mise à jour')
-                fetchCafes()
                 setEditingDate(null)
                 setTimeout(() => setSuccessMessage(null), 3000)
             })
@@ -146,48 +108,6 @@ const GetInfos = () => {
                 }
             })
     }
-    const handleDeletePayment=(id)=>{
-        axios.delete(process.env.REACT_APP_API_URL+'/deleteUserPayment/'+id,{headers:{
-            'token-jwt':localStorage.getItem('adminToken')
-        }})
-        .then(r=>fetchCafes())
-        .catch(err=>console.log(err))
-    }
-    const handleAddPayment = (cafeId) => {
-        if (!newPayment.amount || parseFloat(newPayment.amount) <= 0) {
-            setError('Montant invalide')
-            setTimeout(() => setError(null), 3000)
-            return
-        }
-
-        setAddingPaymentFor(cafeId)
-        axios.post(
-            `${process.env.REACT_APP_API_URL}/createUserPayment`,
-            {
-                amount: parseFloat(newPayment.amount),
-                method: newPayment.method,
-                status: newPayment.status,
-                DateOfPayment: new Date().toISOString(),
-                cafeId
-            },
-            { headers: { 'token-jwt': localStorage.getItem('adminToken') } }
-        )
-            .then(() => {
-                setSuccessMessage('Paiement ajouté avec succès')
-                fetchCafes()
-                setAddingPaymentFor(null)
-                setNewPayment({ amount: '', method: 'cash', status: 'success' })
-                setTimeout(() => setSuccessMessage(null), 3000)
-            })
-            .catch(err => {
-                setError(err.response?.data?.message || 'Erreur lors de l\'ajout du paiement')
-                setAddingPaymentFor(null)
-                if(err?.response?.data?.redirectTo){
-                    navigate('/login/admin')
-                }
-            })
-    }
-
     // Filter and pagination logic
     const filteredCafes = cafesData.filter(cafe => 
         cafe.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -380,8 +300,6 @@ const GetInfos = () => {
                                         <tr>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Café</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Plan</th>
-                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Paiements</th>
-                                            <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Vérifié</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Start Date</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Date Expiration</th>
                                             <th className="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">Actions</th>
@@ -414,46 +332,21 @@ const GetInfos = () => {
                                                                 {cafe.plan || 'N/A'}
                                                             </span>
                                                         </td>
-                                                        <td className="px-6 py-4">
+                                                        {/* <td className="px-6 py-4">
                                                             <button
                                                                 onClick={() => setExpandedCafe(expandedCafe === cafe.id ? null : cafe.id)}
                                                                 className="flex items-center gap-2 hover:text-blue-400 transition"
                                                             >
                                                                 <div>
-                                                                    <div className="text-white font-semibold">{cafe.Payements?.length || 0} paiement{(cafe.Payements?.length || 0) > 1 ? 's' : ''}</div>
-                                                                    <div className="text-xs text-green-400">
-                                                                        {cafe.Payements?.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0).toFixed(2)} DT
-                                                                    </div>
+                                                                   
                                                                 </div>
                                                                 {expandedCafe === cafe.id ? 
                                                                     <ChevronUp className="w-4 h-4 text-blue-400" /> : 
                                                                     <ChevronDown className="w-4 h-4 text-blue-400" />
                                                                 }
                                                             </button>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            {cafe.verifiedPayment === '1' ? (
-                                                                <span className="flex items-center gap-1 text-green-400">
-                                                                    <CheckCircle className="w-4 h-4" />
-                                                                    Oui
-                                                                </span>
-                                                            ) : (
-                                                                <button
-                                                                    onClick={() => handleUpdatePaymentVerified(cafe.id)}
-                                                                    disabled={updatingPayment === cafe.id}
-                                                                    className="flex items-center gap-1 text-yellow-400 hover:text-yellow-300 transition disabled:opacity-50"
-                                                                >
-                                                                    {updatingPayment === cafe.id ? (
-                                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                                    ) : (
-                                                                        <>
-                                                                            <XCircle className="w-4 h-4" />
-                                                                            Non
-                                                                        </>
-                                                                    )}
-                                                                </button>
-                                                            )}
-                                                        </td>
+                                                        </td> */}
+                                                       
                                                         <td className="px-6 py-4 text-white">
                                                         {cafe.subscriptionStartDate ? new Date(cafe.subscriptionStartDate).toLocaleDateString('fr-FR', {
                                                                         day: '2-digit',
@@ -512,136 +405,7 @@ const GetInfos = () => {
                                                         </td>
                                                     </tr>
                                                     
-                                                    {/* Expanded Payment Details Row */}
-                                                    {expandedCafe === cafe.id && (
-                                                        <tr>
-                                                            <td colSpan="6" className="px-6 py-4 bg-white/5">
-                                                                <div className="space-y-4">
-                                                                    {/* Add Payment Form */}
-                                                                    <div className="bg-white/5 border border-blue-500/30 rounded-lg p-4">
-                                                                        <h4 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2">
-                                                                            <CreditCard className="w-4 h-4" />
-                                                                            Ajouter un paiement
-                                                                        </h4>
-                                                                        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                                                                            <div>
-                                                                                <label className="text-xs text-gray-400 mb-1 block">Montant (DT)</label>
-                                                                                <input
-                                                                                    type="number"
-                                                                                    step="0.01"
-                                                                                    min="0"
-                                                                                    placeholder="0.00"
-                                                                                    value={newPayment.amount}
-                                                                                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
-                                                                                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                                />
-                                                                            </div>
-                                                                            <div>
-                                                                                <label className="text-xs text-gray-400 mb-1 block">Méthode</label>
-                                                                                <select
-                                                                                    value={newPayment.method}
-                                                                                    onChange={(e) => setNewPayment({...newPayment, method: e.target.value})}
-                                                                                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-black text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                                >
-                                                                                    <option value="cash">Cash</option>
-                                                                                    <option value="card">Carte</option>
-                                                                                    <option value="bank_transfer">Virement</option>
-                                                                                    <option value="check">Chèque</option>
-                                                                                </select>
-                                                                            </div>
-                                                                            <div>
-                                                                                <label className="text-xs text-gray-400 mb-1 block">Statut</label>
-                                                                                <select
-                                                                                    value={newPayment.status}
-                                                                                    onChange={(e) => setNewPayment({...newPayment, status: e.target.value})}
-                                                                                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-black text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                                >
-                                                                                    <option value="success">Succès</option>
-                                                                                    <option value="pending">En attente</option>
-                                                                                    <option value="cancel">Annulé</option>
-                                                                                </select>
-                                                                            </div>
-                                                                            <div className="flex items-end">
-                                                                                <button
-                                                                                    onClick={() => handleAddPayment(cafe.id)}
-                                                                                    disabled={addingPaymentFor === cafe.id || !newPayment.amount}
-                                                                                    className="w-full px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                                                                >
-                                                                                    {addingPaymentFor === cafe.id ? (
-                                                                                        <>
-                                                                                            <Loader2 className="w-4 h-4 animate-spin" />
-                                                                                            Ajout...
-                                                                                        </>
-                                                                                    ) : (
-                                                                                        <>
-                                                                                            <CheckCircle className="w-4 h-4" />
-                                                                                            Ajouter
-                                                                                        </>
-                                                                                    )}
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Payment History */}
-                                                                    {cafe.Payements?.length > 0 && (
-                                                                        <div>
-                                                                            <h4 className="text-sm font-semibold text-blue-400 mb-3 flex items-center gap-2">
-                                                                                <CreditCard className="w-4 h-4" />
-                                                                                Historique des paiements
-                                                                            </h4>
-                                                                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                                                                {cafe.Payements.map((payment, pIndex) => (
-                                                                                    <div key={pIndex} className="bg-white/5 border border-white/10 rounded-lg p-3 hover:bg-white/10 transition">
-                                                                                        
-                                                                                        <div className="flex items-center justify-between mb-2">
-                                                                                            <span className="text-xs font-semibold text-gray-400">Paiement #{pIndex + 1}</span>
-                                                                                            <span className="text-sm font-bold text-green-400">{parseFloat(payment.amount || 0).toFixed(2)} DT</span>
-                                                                                            <span 
-                                                                                            onClick={()=>handleDeletePayment(payment.id)}
-                                                                                            className="text-sm font-bold text-red-400 cursor-pointer">X</span>
-                                                                                            
-                                                                                        </div>
-                                                                                        <div className="space-y-1 text-xs text-gray-300">
-                                                                                            {payment.method && (
-                                                                                                <div>
-                                                                                                    <span className="text-gray-500">Méthode:</span> {payment.method}
-                                                                                                </div>
-                                                                                            )}
-                                                                                            {payment.status && (
-                                                                                                <div>
-                                                                                                    <span className="text-gray-500">Statut:</span> 
-                                                                                                    <span className={`ml-1 font-semibold ${
-                                                                                                        payment.status === 'success' ? 'text-green-400' :
-                                                                                                        payment.status === 'pending' ? 'text-yellow-400' :
-                                                                                                        'text-red-400'
-                                                                                                    }`}>
-                                                                                                        {payment.status}
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                            )}
-                                                                                            <div>
-                                                                                                <span className="text-gray-500">Date:</span> 
-                                                                                                <span className="ml-1 font-semibold text-green-400">
-                                                                                                    {new Date(payment?.DateOfPayment).toLocaleDateString('fr-FR', {
-                                                                                                        day: '2-digit',
-                                                                                                        month: 'short',
-                                                                                                        year: 'numeric',
-                                                                                                        hour: '2-digit',
-                                                                                                        minute: '2-digit'
-                                                                                                    })}
-                                                                                                </span>
-                                                                                            </div>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    )}
+                                                  
                                                 </React.Fragment>
                                             ))
                                         )}
