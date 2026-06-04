@@ -276,7 +276,8 @@ export default function Barman() {
         { status: next, orderId },
         { headers: hdrs() }
       );
-    } catch {
+    } catch (e){
+      if (e.response.status===401) window.location.href=e.response.data.redirectTo
       setBusy(b => { const n = {...b}; delete n[item.id]; return n; });
       cancelRemove(orderId);
       setOrders(prev => prev.map(o => {

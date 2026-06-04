@@ -16,7 +16,7 @@ import cafeApi from '../../api/cafeApiInstance';
 ───────────────────────────────────────────────────────────────── */
 const STATUS = {
   pending:  { label: 'Pending',  bg: 'rgba(245,158,11,.12)',  text: '#f59e0b', border: 'rgba(245,158,11,.28)'  },
-  prepared: { label: 'Prepared', bg: 'rgba(14,165,233,.12)',  text: '#38bdf8', border: 'rgba(14,165,233,.28)'  },
+  preparing: { label: 'Prepared', bg: 'rgba(14,165,233,.12)',  text: '#38bdf8', border: 'rgba(14,165,233,.28)'  },
   served:   { label: 'Served',   bg: 'rgba(52,211,153,.12)',  text: '#34d399', border: 'rgba(52,211,153,.28)'  },
   canceled: { label: 'Canceled', bg: 'rgba(248,113,113,.12)', text: '#f87171', border: 'rgba(248,113,113,.28)' },
 };
@@ -42,7 +42,7 @@ const StatusBadge = memo(function StatusBadge({ status }) {
 });
 
 const OrderRow = memo(function OrderRow({ order, idx, onRowClick, onServe, onCancel }) {
-  const isActive = order.status === 'pending' || order.status === 'prepared';
+const isActive = order.status === 'pending' || order.status === 'preparing'; // ← was 'prepared'
 
   return (
     <div
@@ -239,21 +239,26 @@ sock.on('newOrder', newOrder => {
   }, []);
 
   /* ── Fetch ── */
-  useEffect(() => {
-    setIsLoading(true);
-    Promise.all([
-      cafeApi.get(`/getOrders?page=${currentPage}`),
-      currentPage === 1 ? cafeApi.get('/itemsEndSoon') : Promise.resolve(null),
-    ])
-      .then(([ordersRes, alertsRes]) => {
-        setAllOrders(ordersRes.data.orders);
-        setTotalOrders(ordersRes.data.total);
-        setTotalPages(ordersRes.data.totalPages);
-        if (alertsRes) setAlerts(alertsRes.data);
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, [currentPage]);
+useEffect(() => {
+  setIsLoading(true);
+  
+  cafeApi.get(`/getOrders?page=${currentPage}`)
+    .then(ordersRes => {
+      setAllOrders(ordersRes.data.orders);
+      setTotalOrders(ordersRes.data.total);
+      setTotalPages(ordersRes.data.totalPages);
+      
+      // Alerts are optional — never block orders for this
+      if (currentPage === 1) {
+        cafeApi.get('/itemsEndSoon')
+          .then(alertsRes => setAlerts(alertsRes.data))
+          .catch(() => setAlerts([])); // ← silent fail, alerts are non-critical
+      }
+    })
+    .catch(err => console.error('fetch orders error:', err))
+    .finally(() => setIsLoading(false));
+    
+}, [currentPage]);
 
   /* ── Handlers ── */
   const handleRowClick = useCallback((order) => {

@@ -19,7 +19,7 @@ const STATUS_PILL  = {
 };
 const STATUS_LABEL = {
   pending:  '⏳ Pending',
-  preparing:'🔥 Preparing',
+  preparing:' Preparing',
   served:   '✅ Served',
   canceled: '✕ Canceled',                       // ← added
 };

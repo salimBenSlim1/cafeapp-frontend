@@ -23,7 +23,14 @@ export default function ServerLogin() {
       if (r.data?.serverToken) {
         localStorage.setItem('serverToken', r.data.serverToken);
         setSuccess('Login successful! Redirecting…');
-        setTimeout(() => { window.location.href = '/server-dashboard'; }, 1000);
+        if (r.data.role==='barman'){
+           window.location.href = '/barman'
+          
+        }
+        else{
+          window.location.href = '/server-dashboard'
+
+        }
       }
     } catch (e) { setError(e.response?.data?.message || 'Incorrect name or password'); }
     finally { setIsLoading(false); }
@@ -37,7 +44,7 @@ export default function ServerLogin() {
         <div className="sl-card">
           <div className="sl-top">
             <div className="sl-ring"><img src="/images/coffai1.png" alt="CoffAI" style={{width:56,height:56,objectFit:'contain'}}/></div>
-            <h1 className="sl-title">Server Portal</h1>
+            <h1 className="sl-title">Waiter Portal</h1>
             <p className="sl-sub">Sign in to manage your tables</p>
           </div>
           {error   && <div className="sl-msg sl-err"><AlertCircle size={15}/>{error}</div>}

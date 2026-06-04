@@ -5,7 +5,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import cafeApi from '../../api/cafeApiInstance';
 import WaiterReportModal from './WaiterPrint';
-
+import axios from 'axios'
 const SHIFT = {
   morning:   { label: 'Morning',   color: '#f59e0b', bg: 'rgba(245,158,11,.12)',  border: 'rgba(245,158,11,.28)'  },
   afternoon: { label: 'Afternoon', color: '#a78bfa', bg: 'rgba(167,139,250,.12)', border: 'rgba(167,139,250,.28)' },
@@ -15,90 +15,70 @@ const getShift = (begin) => { const h = parseInt(begin); return h < 12 ? 'mornin
 const initials = (name) => name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
 
 export default function ManageWaiters() {
-  const [waiters, setWaiters]             = useState([]);
-  const [searchTerm, setSearchTerm]       = useState('');
-  const [showAddModal, setShowAddModal]   = useState(false);
+  const [waiters, setWaiters]                 = useState([]);
+  const [searchTerm, setSearchTerm]           = useState('');
+  const [showAddModal, setShowAddModal]       = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [reportWaiter, setReportWaiter]   = useState(null);
+  const [reportWaiter, setReportWaiter]       = useState(null);
   const [selectedWaiter, setSelectedWaiter]   = useState(null);
   const [expandedWaiter, setExpandedWaiter]   = useState(null);
-  const [isLoading, setIsLoading]         = useState(true);
-  const [newWaiter, setNewWaiter]         = useState({ name:'', password:'', begin:'', end:'' });
+  const [isLoading, setIsLoading]             = useState(true);
+  const [deleteTarget, setDeleteTarget]       = useState(null);
+  const [newWaiter, setNewWaiter] = useState({
+    name: '', password: '', begin: '', end: '', role: ''
+  });
   const [availableTables, setAvailableTables] = useState([]);
   const [selectedTables, setSelectedTables]   = useState([]);
+  const[id,setId]=useState(null)
   const navigate = useNavigate();
-
+  const gettake=()=>{
+    cafeApi.get('/getId')
+    .then(r=>setId(r.data))
+    .catch(e=>console.log(e))
+  }
   useEffect(() => {
+   
     const load = async () => {
+    
       setIsLoading(true);
       try {
         const [wr, tr] = await Promise.all([
           cafeApi.get('/get-servers'),
           cafeApi.get('/getQRCodes'),
+         
         ]);
         setWaiters(wr.data.data);
         setAvailableTables(tr.data);
-      } catch {}
+        
+        
+      } catch(e) {
+        if (e.response?.status === 401) navigate(e.response.data.redirectedTo);
+      }
       setIsLoading(false);
     };
     load();
   }, []);
 
-  const handlePrintServerReport = (d) => {
-    const w = window.open('','','width=302,height=600');
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
-      @page{size:80mm auto;margin:0}*{margin:0;padding:0;box-sizing:border-box}
-      body{width:80mm;font-family:'Courier New',monospace;font-size:12px;padding:5mm}
-      .c{text-align:center}.b{font-weight:bold}.hd{border-bottom:2px dashed #000;padding-bottom:8px;margin-bottom:8px}
-      .dv{border-bottom:1px dashed #000;margin:8px 0}.ir{display:flex;justify-content:space-between;margin-bottom:4px}
-      .tt{border-top:2px dashed #000;padding-top:8px;margin-top:8px;font-size:14px}
-      .ft{margin-top:10px;border-top:2px dashed #000;padding-top:8px}.s{font-size:11px}
-    </style></head><body>
-    <div class="hd c"><div class="b" style="font-size:16px">${d.cafeName.toUpperCase()}</div>
-    <div style="font-size:14px">RAPPORT SERVEUR</div><div>${d.serverName}</div>
-    <div>${new Date().toLocaleDateString('fr-TN')} ${new Date().toLocaleTimeString('fr-TN')}</div></div>
-    <div><div class="b">Commandes (${d.ordersCount}):</div><div class="dv"></div>
-    ${d.orders.map(o=>`<div><div class="b s">Table ${o.tableNumber}</div>
-    ${o.items.map(i=>`<div class="ir"><div>${i.quantity}x ${i.name}</div><div>${(i.quantity*i.price).toFixed(3)} TND</div></div>`).join('')}
-    <div class="ir b"><div>Sous-total</div><div>${o.total.toFixed(3)} TND</div></div></div>`).join('')}</div>
-    <div class="tt"><div class="ir b"><div>TOTAL</div><div>${d.totalDay.toFixed(3)} TND</div></div></div>
-    <div class="ft c"><div class="b">Fin de service</div><div>${d.serverName}</div></div>
-    <script>window.onload=function(){window.print();setTimeout(()=>window.close(),100)}</script>
-    </body></html>`);
-    w.document.close();
-  };
-
-  const print = async (id) => {
-    try { const r = await cafeApi.get(`/get-daily-of-server/${id}`); handlePrintServerReport(r.data); }
-    catch { alert('Erreur lors de la récupération du rapport'); }
-  };
-
   const handleAddWaiter = async () => {
-    if (!newWaiter.name || !newWaiter.password || !newWaiter.begin || !newWaiter.end)
+    if (!newWaiter.name || !newWaiter.password || !newWaiter.begin || !newWaiter.end || !newWaiter.role)
       return alert('Please fill all fields');
     try {
       const r = await cafeApi.post('/add-server', newWaiter);
-      // Use returned data if available, otherwise construct locally
-      const created = r.data.data ?? r.data.server ?? r.data ?? {
-        id: Date.now(),
-        ...newWaiter,
-        role: 'waiter',
-      };
+      const created = r.data.data ?? r.data.server ?? r.data ?? { id: Date.now(), ...newWaiter };
       setWaiters(prev => [...prev, created]);
       setShowAddModal(false);
-      setNewWaiter({ name:'', password:'', begin:'', end:'' });
+      setNewWaiter({ name:'', password:'', begin:'', end:'', role:'' });
     } catch { alert('Error adding server'); }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('Delete this server?')) return;
+  const handleDelete = async () => {
     try {
-      await cafeApi.delete('/delete-servers/' + id);
-      setWaiters(prev => prev.filter(w => w.id !== id));
-      // Free up tables that were assigned to this waiter
-      setAvailableTables(prev => prev.map(t => t.assignedTo === id ? { ...t, assignedTo: null } : t));
-      if (expandedWaiter === id) setExpandedWaiter(null);
+      await cafeApi.delete('/delete-servers/' + deleteTarget.id);
+      setWaiters(prev => prev.filter(w => w.id !== deleteTarget.id));
+      setAvailableTables(prev => prev.map(t => t.assignedTo === deleteTarget.id ? { ...t, assignedTo: null } : t));
+      if (expandedWaiter === deleteTarget.id) setExpandedWaiter(null);
     } catch { alert('Error deleting'); }
+    setDeleteTarget(null);
   };
 
   const handleUnassign = async (waiterId, tableNumber) => {
@@ -163,7 +143,7 @@ export default function ManageWaiters() {
               </div>
             </div>
             <button className="mw-add-btn" onClick={() => setShowAddModal(true)}>
-              <UserPlus size={15}/> Add Server
+              <UserPlus size={15}/> Add Waiter
             </button>
           </header>
 
@@ -224,7 +204,8 @@ export default function ManageWaiters() {
                       <button className="mw-act-btn mw-act-expand" onClick={() => setExpandedWaiter(isExp ? null : waiter.id)}>
                         {isExp ? <ChevronUp size={15}/> : <ChevronDown size={15}/>}
                       </button>
-                      <button className="mw-act-btn mw-act-del" onClick={() => handleDelete(waiter.id)} title="Delete"><Trash2 size={15}/></button>
+                      {/* ✅ Fixed: passes full waiter object to setDeleteTarget */}
+                      <button className="mw-act-btn mw-act-del" onClick={() => setDeleteTarget(waiter)} title="Delete"><Trash2 size={15}/></button>
                     </div>
                   </div>
 
@@ -249,9 +230,12 @@ export default function ManageWaiters() {
           {/* ── SERVER LINK ── */}
           <div className="mw-link-section">
             <p className="mw-link-label">Server login link</p>
-            <p className="mw-link-url" onClick={() => navigate('/server-login?id=' + localStorage.getItem('cafeId'))}>
-              https://coffai.tn/server-login?id={localStorage.getItem('cafeId')}
-            </p>
+            {
+              id?
+            <p className="mw-link-url" onClick={() => navigate('/server-login?id=' + id)}>
+              https://coffai.tn/server-login?id={id}
+            </p>:<h1 className='underline text-[12px] cursor-pointer' onClick={()=>gettake()}>click here</h1>
+            }
           </div>
 
         </div>
@@ -261,7 +245,7 @@ export default function ManageWaiters() {
           <div className="mw-shade" onClick={() => setShowAddModal(false)}>
             <div className="mw-modal" onClick={e => e.stopPropagation()}>
               <div className="mw-modal-hd">
-                <h2 className="mw-modal-title">Add Server</h2>
+                <h2 className="mw-modal-title">Add Waiter</h2>
                 <button className="mw-modal-close" onClick={() => setShowAddModal(false)}><X size={18}/></button>
               </div>
               <div className="mw-form">
@@ -275,6 +259,28 @@ export default function ManageWaiters() {
                       value={newWaiter[f.key]} onChange={e => setNewWaiter({...newWaiter, [f.key]: e.target.value})}/>
                   </div>
                 ))}
+
+                {/* ✅ Fixed role selector */}
+                <div className="mw-field">
+                  <label className="mw-field-label">Role <span style={{color:'#f87171'}}>*</span></label>
+                  <div style={{display:'flex', gap:10}}>
+                    {[
+                      { value:'waiter', label:'Waiter' },
+                      { value:'barman', label:'Barman' },
+                    ].map(({value, label}) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setNewWaiter({...newWaiter, role: value})}
+                        className={`mw-role-btn ${newWaiter.role === value ? 'mw-role-active-' + value : ''}`}
+                      >
+                        <span className="mw-role-dot"/>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="mw-field">
                   <label className="mw-field-label">Schedule <span style={{color:'#f87171'}}>*</span></label>
                   <div style={{display:'flex',gap:8,alignItems:'center'}}>
@@ -328,6 +334,26 @@ export default function ManageWaiters() {
             </div>
           </div>
         )}
+
+        {/* ══ DELETE CONFIRM MODAL ══ */}
+        {deleteTarget && (
+          <div className="mw-shade" onClick={() => setDeleteTarget(null)}>
+            <div className="mw-modal" style={{maxWidth:360}} onClick={e => e.stopPropagation()}>
+              <div style={{width:52,height:52,borderRadius:14,background:'rgba(248,113,113,.1)',border:'1px solid rgba(248,113,113,.2)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 18px'}}>
+                <Trash2 size={22} color="#f87171"/>
+              </div>
+              <h2 style={{textAlign:'center',fontSize:'1.05rem',fontWeight:800,color:'#e8f4ff',marginBottom:8}}>Delete server?</h2>
+              <p style={{textAlign:'center',fontSize:'.82rem',color:'#4a7099',lineHeight:1.6,marginBottom:24}}>
+                This will permanently remove <strong style={{color:'#e8f4ff'}}>{deleteTarget.name}</strong> and unassign all their tables. This cannot be undone.
+              </p>
+              <div style={{display:'flex',gap:10}}>
+                <button className="mw-btn-ghost" style={{flex:1}} onClick={() => setDeleteTarget(null)}>Cancel</button>
+                <button className="mw-btn-danger" style={{flex:2}} onClick={handleDelete}>Yes, delete</button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {reportWaiter && (
@@ -391,10 +417,10 @@ body { font-family:'Plus Jakarta Sans',sans-serif; }
 .mw-meta { display:inline-flex;align-items:center;gap:4px;font-size:.75rem;color:#4a7099; }
 .mw-actions { display:flex;gap:6px;align-items:center;margin-left:auto; }
 .mw-act-btn { width:34px;height:34px;border-radius:10px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s; }
-.mw-act-print  { background:rgba(52,211,153,.1); color:#34d399; }  .mw-act-print:hover  { background:rgba(52,211,153,.2); }
-.mw-act-assign { background:rgba(27,203,224,.1); color:#1bcbe0; }  .mw-act-assign:hover { background:rgba(27,203,224,.2); }
+.mw-act-print  { background:rgba(52,211,153,.1);  color:#34d399; } .mw-act-print:hover  { background:rgba(52,211,153,.2); }
+.mw-act-assign { background:rgba(27,203,224,.1);  color:#1bcbe0; } .mw-act-assign:hover { background:rgba(27,203,224,.2); }
 .mw-act-expand { background:rgba(255,255,255,.06);color:#7a9dc0; } .mw-act-expand:hover { background:rgba(255,255,255,.1);color:#e8f4ff; }
-.mw-act-del    { background:rgba(248,113,113,.1);color:#f87171; }  .mw-act-del:hover    { background:rgba(248,113,113,.2); }
+.mw-act-del    { background:rgba(248,113,113,.1); color:#f87171; } .mw-act-del:hover    { background:rgba(248,113,113,.2); }
 
 .mw-expanded { padding:16px 20px 18px;border-top:1px solid rgba(255,255,255,.06); }
 .mw-expanded-label { font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#4a7099; }
@@ -423,6 +449,13 @@ body { font-family:'Plus Jakarta Sans',sans-serif; }
 .mw-input::placeholder { color:#1e3a5a; }
 .mw-input:focus { border-color:rgba(27,203,224,.4);box-shadow:0 0 0 3px rgba(27,203,224,.07); }
 
+/* ── Role toggle buttons ── */
+.mw-role-btn { flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);cursor:pointer;font-family:inherit;font-size:.82rem;font-weight:600;color:#4a7099;transition:all .2s; }
+.mw-role-btn:hover { border-color:rgba(255,255,255,.18);color:#7a9dc0;background:rgba(255,255,255,.07); }
+.mw-role-active-waiter { background:rgba(52,211,153,.1) !important;border-color:rgba(52,211,153,.35) !important;color:#34d399 !important; }
+.mw-role-active-barman { background:rgba(167,139,250,.1) !important;border-color:rgba(167,139,250,.35) !important;color:#a78bfa !important; }
+.mw-role-dot { width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0; }
+
 .mw-tables-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:4px; }
 @media(max-width:500px){.mw-tables-grid{grid-template-columns:repeat(4,1fr);}}
 .mw-table-btn { display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 8px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);cursor:pointer;transition:all .2s; }
@@ -436,4 +469,6 @@ body { font-family:'Plus Jakarta Sans',sans-serif; }
 .mw-btn-primary:hover { transform:translateY(-1px);box-shadow:0 6px 24px rgba(27,203,224,.38); }
 .mw-btn-ghost { padding:11px 16px;border-radius:12px;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:600;color:#7a9dc0;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);transition:all .2s; }
 .mw-btn-ghost:hover { background:rgba(255,255,255,.08);color:#e8f4ff; }
+.mw-btn-danger { padding:11px 18px;border-radius:12px;border:none;cursor:pointer;font-family:inherit;font-size:.88rem;font-weight:700;color:#fff;background:linear-gradient(135deg,#f87171,#dc2626);box-shadow:0 4px 16px rgba(248,113,113,.25);transition:all .2s; }
+.mw-btn-danger:hover { transform:translateY(-1px);box-shadow:0 6px 22px rgba(248,113,113,.38); }
 `;

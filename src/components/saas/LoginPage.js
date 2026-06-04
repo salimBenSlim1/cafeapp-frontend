@@ -43,6 +43,8 @@ export default function LoginPage() {
       const response = await axios.post(`${process.env.REACT_APP_API_URL}/login`, formData, { headers,
   withCredentials: true
        },);
+       
+       localStorage.setItem('cafeId',response?.data?.data?.cafe?.id)
       setAccessToken(response.data.data.accessToken);
       setIsLoading(false); setLoginSuccess(true);
       setTimeout(() => navigate('/admin'), 2000);
