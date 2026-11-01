@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const cafeApi = axios.create({
-  baseURL: `${process.env.REACT_APP_API_URL}/api`,
+  baseURL: `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api`,
   withCredentials: true, 
 });
 
@@ -14,6 +14,7 @@ export function setAccessToken(token,id) {
     localStorage.setItem('cafeId', id);
   } else {
     localStorage.removeItem('token');
+    localStorage.removeItem('cafeId');
   }
 }
 cafeApi.interceptors.request.use((config) => {
@@ -27,18 +28,19 @@ cafeApi.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 
       try {
         const res = await axios.post(
-          `${process.env.REACT_APP_API_URL}/refresh`,
+          `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/refresh`,
           {},
           { withCredentials: true }
         );
         const newToken = res.data.accessToken;
         const id=res.data.id
         setAccessToken(newToken,id); 
+        originalRequest.headers = originalRequest.headers || {};
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
         return cafeApi(originalRequest);
       } catch (err) {
