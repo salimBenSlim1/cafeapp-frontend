@@ -1,70 +1,175 @@
-# Getting Started with Create React App
+# CafeApp — Real-Time Café Management Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+**A full-stack café operations platform connecting customers, waiters, bar staff, and café administrators through one real-time workflow.**
 
-## Available Scripts
+CafeApp replaces fragmented paper-based workflows with QR-code menus, live order tracking, staff workspaces, and data-driven reporting. This repository contains the **React frontend**; the companion `cafeapp` repository contains the Node.js backend.
 
-In the project directory, you can run:
+## At a glance
 
-### `npm start`
+| Experience | What it supports |
+| --- | --- |
+| **Customers** | Browse a digital menu, inspect products, place orders, and follow order progress |
+| **Café administrators** | Manage orders, products, tables, QR codes, staff, and sales analytics |
+| **Waiters / servers** | Use a dedicated staff dashboard for day-to-day order operations |
+| **Bar staff** | View and manage orders in a preparation-focused interface |
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Features
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### QR-code ordering and customer experience
+- Customer-facing menu with product categories, images, and item details.
+- Table-oriented ordering flow, accessible from the customer interface.
+- Order tracking with real-time updates using Socket.IO.
+- Dedicated customer ordering and order-tracking components.
 
-### `npm test`
+### Live operations
+- Admin order dashboard with status badges, order actions, and pagination.
+- Separate server and barman screens for operational roles.
+- Real-time events for order updates and cancellations.
+- Receipt/printing workflows integrated with the backend.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Café administration
+- Product and menu management.
+- Staff management screens.
+- Table QR-code dashboard and downloadable QR-code PDF.
+- Dedicated administration landing and navigation.
 
-### `npm run build`
+### Analytics and reporting
+- Interactive charts built with **Recharts**.
+- Revenue, orders, and product-performance visualizations.
+- Date-range presets, including recent periods and custom ranges.
+- KPI-oriented dashboard presentation.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Product experience
+- SaaS-style marketing and onboarding pages.
+- Custom Material UI theme, responsive layouts, iconography, and animated interactions.
+- Loading, error, and disconnected-state handling in key screens.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Engineering highlights
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Multiple user journeys in one React application
 
-### `npm run eject`
+React Router organizes distinct interfaces for customers, administrators, waiters, and bar staff. This makes the frontend more than a single dashboard: it supports several users participating in the same café workflow.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Event-driven updates
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The frontend integrates **Socket.IO Client** so operational screens can react to backend events rather than relying exclusively on repeated HTTP polling. Order-state changes can be reflected across the customer and staff experiences.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Component-oriented interface design
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Dedicated components separate the customer menu, order tracker, administrative order views, charts, QR-code management, and staff dashboards. Some screens use memoized components and React hooks such as `useMemo`, `useCallback`, and `useRef` for interactive behavior.
 
-## Learn More
+### API integration
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+The application uses **Axios**, including a shared café API instance in administrative screens. Frontend configuration supports environment-based backend and WebSocket URLs.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Data visualization
 
-### Code Splitting
+The analytics experience uses **Recharts** to render interactive sales and operational data, including KPI cards and configurable date ranges.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Tech stack
 
-### Analyzing the Bundle Size
+**Core:** React 19, JavaScript, React Router  
+**UI:** Material UI, Emotion, Tailwind CSS, Lucide React, Framer Motion  
+**Data and networking:** Axios, Socket.IO Client  
+**Analytics:** Recharts, Vercel Speed Insights  
+**Utilities:** jsPDF  
+**Tooling:** Create React App / react-scripts
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Application routes
 
-### Making a Progressive Web App
+| Route | Experience |
+| --- | --- |
+| `/` | Product landing page |
+| `/login` | Café login |
+| `/admin` | Administration home |
+| `/admin/orders` | Order management |
+| `/admin/items` | Menu and item management |
+| `/admin/charts` | Analytics |
+| `/admin/qrcode` | Table QR codes |
+| `/admin/waiters` | Staff management |
+| `/client-panier` | Customer ordering |
+| `/server-login` | Staff login |
+| `/server-dashboard` | Staff dashboard |
+| `/barman` | Bar preparation view |
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## Getting started
 
-### Advanced Configuration
+### Requirements
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- A current Node.js LTS release and npm
+- A running instance of the companion CafeApp backend for API-driven functionality
 
-### Deployment
+### Install and run
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+```bash
+npm install
+npm start
+```
 
-### `npm run build` fails to minify
+The development server normally opens at `http://localhost:3000`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+### Environment configuration
+
+Create a local `.env` file as needed:
+
+```dotenv
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_WS_URL=http://localhost:5000
+```
+
+These variable names are used in the staff dashboard. Other API integrations may have additional configuration requirements; inspect `src/api/` and individual feature components when connecting your own backend. **Do not put secrets in `REACT_APP_*` variables**: React embeds these values in the browser bundle.
+
+### Commands
+
+```bash
+npm start       # Run development server
+npm run build   # Create production build
+npm test        # Run configured React tests
+```
+
+## Project structure
+
+```text
+src/
+├── api/                  # API client configuration
+├── components/
+│   ├── admin/            # Orders, products, charts, QR codes, staff
+│   ├── saas/             # Landing, registration, café login
+│   ├── server/           # Waiter and bar staff interfaces
+│   ├── user/             # Customer menu and order tracking
+│   └── getInfos/         # Additional onboarding/admin flows
+├── App.js                # Routes and theme
+└── index.js              # React entry point
+```
+
+## System overview
+
+```text
+Customer QR menu ───────┐
+Admin dashboard ────────┤
+Waiter dashboard ───────┼── React + Axios / Socket.IO ── Node.js API
+Bar staff dashboard ────┘                                 │
+                                                    SQL database
+```
+
+The backend implements the business logic, data models, authentication, transactional operations, reporting, and real-time event delivery.
+
+## Current improvement areas
+
+This is an evolving portfolio project. Before a production deployment or public launch:
+
+- Audit authentication and authorization across every user role and route.
+- Verify environment configuration and remove any hardcoded service URLs.
+- Add integration and end-to-end tests for ordering, staff actions, and analytics.
+- Improve accessibility and check mobile behavior across all major screens.
+- Review dependencies and build warnings; consider migrating away from Create React App.
+- Add genuine product screenshots or a short walkthrough video.
+- Complete the backend security review, especially password handling and tenant isolation.
+
+## Backend repository
+
+**CafeApp API:** [salimBenSlim1/cafeapp](https://github.com/salimBenSlim1/cafeapp)
+
+---
+
+**Built to explore real-time systems, multi-role product design, and the engineering behind everyday café operations.**
